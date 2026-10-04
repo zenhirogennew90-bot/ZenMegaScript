@@ -1,5 +1,5 @@
 -- =================================================================
--- APEX EXECUTIVE HUB v2.3 (ESP COLOR CUSTOMIZER)
+-- APEX EXECUTIVE HUB v3.1 (CLEAN NATIVE ESP - NO MASTER TOGGLE)
 -- =================================================================
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
@@ -12,21 +12,15 @@ local Window = Rayfield:CreateWindow({
    KeySystem = false
 })
 
--- Global State & Flag Management
 getgenv().ApexFlags = {
-    MasterESP = false,
     ESPBox = false,
     ESPName = false,
-    ESPLine = false,
     ESPChams = false,
     BoxColor = Color3.fromRGB(0, 255, 150),
     NameColor = Color3.fromRGB(255, 255, 255),
-    LineColor = Color3.fromRGB(255, 50, 50),
     ChamsColor = Color3.fromRGB(255, 0, 128)
-   
 }
 
--- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
@@ -36,14 +30,6 @@ local LocalPlayer = Players.LocalPlayer
 -- =================================================================
 
 local TabVisuals = Window:CreateTab("👁️ Visuals", 4483345998)
-
-TabVisuals:CreateToggle({
-   Name = "MASTER ESP",
-   CurrentValue = false,
-   Callback = function(Value)
-      getgenv().ApexFlags.MasterESP = Value
-   end,
-})
 
 TabVisuals:CreateToggle({
    Name = "ESP BOX",
@@ -78,22 +64,6 @@ TabVisuals:CreateColorPicker({
 })
 
 TabVisuals:CreateToggle({
-   Name = "ESP LINE",
-   CurrentValue = false,
-   Callback = function(Value)
-      getgenv().ApexFlags.ESPLine = Value
-   end,
-})
-
-TabVisuals:CreateColorPicker({
-    Name = "Warna ESP Line",
-    Color = Color3.fromRGB(255, 50, 50),
-    Callback = function(Value)
-        getgenv().ApexFlags.LineColor = Value
-    end,
-})
-
-TabVisuals:CreateToggle({
    Name = "ESP CHAMS",
    CurrentValue = false,
    Callback = function(Value)
@@ -110,158 +80,102 @@ TabVisuals:CreateColorPicker({
 })
 
 -- =================================================================
--- BACKEND ENGINE: DRAWING ESP SYSTEM
+-- BACKEND ENGINE (ROBLOX NATIVE ESP)
 -- =================================================================
 
 local function createESP(player)
-    -- Main Box
-    local drawBox = Drawing.new("Square")
-    drawBox.Visible = false
-    drawBox.Thickness = 3.5
-    drawBox.Filled = false
-
-    -- Box Outline
-    local drawBoxOutline = Drawing.new("Square")
-    drawBoxOutline.Visible = false
-    drawBoxOutline.Color = Color3.fromRGB(0, 0, 0)
-    drawBoxOutline.Thickness = 5.5
-    drawBoxOutline.Filled = false
-
-    -- Name
-    local drawName = Drawing.new("Text")
-    drawName.Visible = false
-    drawName.Size = 14
-    drawName.Center = true
-    drawName.Outline = true
-
-    -- Line
-    local drawLine = Drawing.new("Line")
-    drawLine.Visible = false
-    drawLine.Thickness = 2.0
-
-    local camera = workspace.CurrentCamera
-
-    local updater = RunService.RenderStepped:Connect(function()
-        if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player ~= LocalPlayer then
-            local hrp = player.Character.HumanoidRootPart
-            local pos, onScreen = camera:WorldToViewportPoint(hrp.Position)
-
-            if onScreen and getgenv().ApexFlags.MasterESP then
-                -- ESP Box Logic
-                if getgenv().ApexFlags.ESPBox then
-                    local sizeX = 2000 / pos.Z
-                    local sizeY = 3000 / pos.Z
-                    local boxPos = Vector2.new(pos.X - sizeX / 2, pos.Y - sizeY / 2)
-                    local boxSize = Vector2.new(sizeX, sizeY)
-
-                    drawBoxOutline.Size = boxSize
-                    drawBoxOutline.Position = boxPos
-                    drawBoxOutline.Visible = true
-
-                    drawBox.Color = getgenv().ApexFlags.BoxColor
-                    drawBox.Size = boxSize
-                    drawBox.Position = boxPos
-                    drawBox.Visible = true
-                else
-                    drawBox.Visible = false
-                    drawBoxOutline.Visible = false
-                end
-
-                -- ESP Name Logic
-                if getgenv().ApexFlags.ESPName then
-                    drawName.Text = player.Name
-                    drawName.Color = getgenv().ApexFlags.NameColor
-                    drawName.Position = Vector2.new(pos.X, pos.Y - (3000 / pos.Z) / 2 - 15)
-                    drawName.Visible = true
-                else
-                    drawName.Visible = false
-                end
-
-                -- ESP Line Logic
-                if getgenv().ApexFlags.ESPLine then
-                    drawLine.Color = getgenv().ApexFlags.LineColor
-                    drawLine.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
-                    drawLine.To = Vector2.new(pos.X, pos.Y)
-                    drawLine.Visible = true
-                else
-                    drawLine.Visible = false
-                end
-            else
-                drawBox.Visible = false
-                drawBoxOutline.Visible = false
-                drawName.Visible = false
-                drawLine.Visible = false
-            end
-        else
-            drawBox.Visible = false
-            drawBoxOutline.Visible = false
-            drawName.Visible = false
-            drawLine.Visible = false
-        end
-    end)
-
-    Players.PlayerRemoving:Connect(function(leaver)
-        if leaver == player then
-            updater:Disconnect()
-            drawBox:Remove()
-            drawBoxOutline:Remove()
-            drawName:Remove()
-            drawLine:Remove()
-        end
-    end)
-end
-
--- Initialize ESP for existing and new players
-for _, p in pairs(Players:GetPlayers()) do
-    if p ~= LocalPlayer then createESP(p) end
-end
-Players.PlayerAdded:Connect(createESP)
-
-Rayfield:Notify({
-   Title = "Apex Hub Updated!",
-   Content = "Fitur ganti warna ESP siap digunakan!",
-   Duration = 4,
-   Image = 4483345998,
-})
-
--- =================================================================
--- ESP CHAMS BACKEND ENGINE
--- =================================================================
-
-local function applyChams(player)
-    local function updateCharacter(char)
+    local function applyToChar(char)
         if not char then return end
-        
+        local hrp = char:WaitForChild("HumanoidRootPart", 5)
+        if not hrp then return end
+
+        -- Chams Setup (Highlight)
         local highlight = char:FindFirstChild("ApexChams") or Instance.new("Highlight")
         highlight.Name = "ApexChams"
         highlight.Adornee = char
         highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-        highlight.FillTransparency = 0.5
+        highlight.FillTransparency = 0.4
         highlight.OutlineTransparency = 0
         highlight.Parent = char
 
-        local chamsConnection
-        chamsConnection = RunService.RenderStepped:Connect(function()
+        -- Billboard Gui Setup (Box & Name)
+        local bb = char:FindFirstChild("ApexBB") or Instance.new("BillboardGui")
+        bb.Name = "ApexBB"
+        bb.Adornee = hrp
+        bb.AlwaysOnTop = true
+        bb.Size = UDim2.new(4.5, 0, 6, 0)
+        bb.StudsOffset = Vector3.new(0, 0, 0)
+        bb.Parent = hrp
+
+        -- ESP Box Frame
+        local boxFrame = bb:FindFirstChild("BoxFrame") or Instance.new("Frame")
+        boxFrame.Name = "BoxFrame"
+        boxFrame.Size = UDim2.new(1, 0, 1, 0)
+        boxFrame.BackgroundTransparency = 1
+        boxFrame.BorderSizePixel = 3
+        boxFrame.Parent = bb
+
+        -- ESP Name Label
+        local nameLabel = bb:FindFirstChild("NameLabel") or Instance.new("TextLabel")
+        nameLabel.Name = "NameLabel"
+        nameLabel.Size = UDim2.new(1, 0, 0.25, 0)
+        nameLabel.Position = UDim2.new(0, 0, -0.3, 0)
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Text = player.Name
+        nameLabel.TextScaled = true
+        nameLabel.Font = Enum.Font.SourceSansBold
+        nameLabel.TextStrokeTransparency = 0
+        nameLabel.Parent = bb
+
+        -- Render Loop Update Real-Time
+        local updater
+        updater = RunService.RenderStepped:Connect(function()
             if char and char:Parent() and player ~= LocalPlayer then
-                if getgenv().ApexFlags.MasterESP and getgenv().ApexFlags.ESPChams then
+                -- Update Chams
+                if getgenv().ApexFlags.ESPChams then
                     highlight.Enabled = true
                     highlight.FillColor = getgenv().ApexFlags.ChamsColor
                     highlight.OutlineColor = getgenv().ApexFlags.ChamsColor
                 else
                     highlight.Enabled = false
                 end
+
+                -- Update Box
+                if getgenv().ApexFlags.ESPBox then
+                    boxFrame.Visible = true
+                    boxFrame.BorderColor3 = getgenv().ApexFlags.BoxColor
+                else
+                    boxFrame.Visible = false
+                end
+
+                -- Update Name
+                if getgenv().ApexFlags.ESPName then
+                    nameLabel.Visible = true
+                    nameLabel.TextColor3 = getgenv().ApexFlags.NameColor
+                else
+                    nameLabel.Visible = false
+                end
             else
                 highlight:Destroy()
-                if chamsConnection then chamsConnection:Disconnect() end
+                bb:Destroy()
+                if updater then updater:Disconnect() end
             end
         end)
     end
 
-    if player.Character then updateCharacter(player.Character) end
-    player.CharacterAdded:Connect(updateCharacter)
+    if player.Character then applyToChar(player.Character) end
+    player.CharacterAdded:Connect(applyToChar)
 end
 
+-- Initialize Semua Player
 for _, p in pairs(Players:GetPlayers()) do
-    if p ~= LocalPlayer then applyChams(p) end
+    if p ~= LocalPlayer then createESP(p) end
 end
-Players.PlayerAdded:Connect(applyChams)
+Players.PlayerAdded:Connect(createESP)
+
+Rayfield:Notify({
+   Title = "Apex Engine Updated!",
+   Content = "Master ESP Dihapus. Sistem Lebih Ringan & Responsif!",
+   Duration = 4,
+   Image = 4483345998,
+})
