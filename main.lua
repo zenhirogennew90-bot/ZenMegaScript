@@ -1,5 +1,5 @@
 -- =================================================================
--- APEX EXECUTIVE HUB v3.1 (CLEAN NATIVE ESP - NO MASTER TOGGLE)
+-- APEX EXECUTIVE HUB v3.2 (INDEPENDENT TOGGLE ESP - MOBILE SAFE)
 -- =================================================================
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
@@ -33,7 +33,7 @@ local TabVisuals = Window:CreateTab("👁️ Visuals", 4483345998)
 
 TabVisuals:CreateToggle({
    Name = "ESP BOX",
-   CurrentValue = false,
+   CurrentValue = getgenv().ApexFlags.ESPBox,
    Callback = function(Value)
       getgenv().ApexFlags.ESPBox = Value
    end,
@@ -41,7 +41,7 @@ TabVisuals:CreateToggle({
 
 TabVisuals:CreateColorPicker({
     Name = "Warna ESP Box",
-    Color = Color3.fromRGB(0, 255, 150),
+    Color = getgenv().ApexFlags.BoxColor,
     Callback = function(Value)
         getgenv().ApexFlags.BoxColor = Value
     end,
@@ -49,7 +49,7 @@ TabVisuals:CreateColorPicker({
 
 TabVisuals:CreateToggle({
    Name = "ESP NAME",
-   CurrentValue = false,
+   CurrentValue = getgenv().ApexFlags.ESPName,
    Callback = function(Value)
       getgenv().ApexFlags.ESPName = Value
    end,
@@ -57,7 +57,7 @@ TabVisuals:CreateToggle({
 
 TabVisuals:CreateColorPicker({
     Name = "Warna ESP Name",
-    Color = Color3.fromRGB(255, 255, 255),
+    Color = getgenv().ApexFlags.NameColor,
     Callback = function(Value)
         getgenv().ApexFlags.NameColor = Value
     end,
@@ -65,7 +65,7 @@ TabVisuals:CreateColorPicker({
 
 TabVisuals:CreateToggle({
    Name = "ESP CHAMS",
-   CurrentValue = false,
+   CurrentValue = getgenv().ApexFlags.ESPChams,
    Callback = function(Value)
       getgenv().ApexFlags.ESPChams = Value
    end,
@@ -73,14 +73,14 @@ TabVisuals:CreateToggle({
 
 TabVisuals:CreateColorPicker({
     Name = "Warna ESP Chams",
-    Color = Color3.fromRGB(255, 0, 128),
+    Color = getgenv().ApexFlags.ChamsColor,
     Callback = function(Value)
         getgenv().ApexFlags.ChamsColor = Value
     end,
 })
 
 -- =================================================================
--- BACKEND ENGINE (ROBLOX NATIVE ESP)
+-- BACKEND ENGINE (INDEPENDENT NATIVE ESP)
 -- =================================================================
 
 local function createESP(player)
@@ -89,16 +89,17 @@ local function createESP(player)
         local hrp = char:WaitForChild("HumanoidRootPart", 5)
         if not hrp then return end
 
-        -- Chams Setup (Highlight)
+        -- 1. Chams Setup (Highlight)
         local highlight = char:FindFirstChild("ApexChams") or Instance.new("Highlight")
         highlight.Name = "ApexChams"
         highlight.Adornee = char
         highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
         highlight.FillTransparency = 0.4
         highlight.OutlineTransparency = 0
+        highlight.Enabled = false
         highlight.Parent = char
 
-        -- Billboard Gui Setup (Box & Name)
+        -- 2. Billboard Gui Setup (Box & Name Container)
         local bb = char:FindFirstChild("ApexBB") or Instance.new("BillboardGui")
         bb.Name = "ApexBB"
         bb.Adornee = hrp
@@ -113,6 +114,7 @@ local function createESP(player)
         boxFrame.Size = UDim2.new(1, 0, 1, 0)
         boxFrame.BackgroundTransparency = 1
         boxFrame.BorderSizePixel = 3
+        boxFrame.Visible = false
         boxFrame.Parent = bb
 
         -- ESP Name Label
@@ -125,35 +127,33 @@ local function createESP(player)
         nameLabel.TextScaled = true
         nameLabel.Font = Enum.Font.SourceSansBold
         nameLabel.TextStrokeTransparency = 0
+        nameLabel.Visible = false
         nameLabel.Parent = bb
 
-        -- Render Loop Update Real-Time
+        -- Independent Render Loop
         local updater
         updater = RunService.RenderStepped:Connect(function()
             if char and char:Parent() and player ~= LocalPlayer then
-                -- Update Chams
-                if getgenv().ApexFlags.ESPChams then
-                    highlight.Enabled = true
+                -- 1. Toggle & Warna Chams
+                local isChams = getgenv().ApexFlags.ESPChams
+                highlight.Enabled = isChams
+                if isChams then
                     highlight.FillColor = getgenv().ApexFlags.ChamsColor
                     highlight.OutlineColor = getgenv().ApexFlags.ChamsColor
-                else
-                    highlight.Enabled = false
                 end
 
-                -- Update Box
-                if getgenv().ApexFlags.ESPBox then
-                    boxFrame.Visible = true
+                -- 2. Toggle & Warna Box
+                local isBox = getgenv().ApexFlags.ESPBox
+                boxFrame.Visible = isBox
+                if isBox then
                     boxFrame.BorderColor3 = getgenv().ApexFlags.BoxColor
-                else
-                    boxFrame.Visible = false
                 end
 
-                -- Update Name
-                if getgenv().ApexFlags.ESPName then
-                    nameLabel.Visible = true
+                -- 3. Toggle & Warna Name
+                local isName = getgenv().ApexFlags.ESPName
+                nameLabel.Visible = isName
+                if isName then
                     nameLabel.TextColor3 = getgenv().ApexFlags.NameColor
-                else
-                    nameLabel.Visible = false
                 end
             else
                 highlight:Destroy()
@@ -174,8 +174,8 @@ end
 Players.PlayerAdded:Connect(createESP)
 
 Rayfield:Notify({
-   Title = "Apex Engine Updated!",
-   Content = "Master ESP Dihapus. Sistem Lebih Ringan & Responsif!",
+   Title = "Apex Engine Fixed!",
+   Content = "Setiap Toggle ESP Sekarang Aktif Mandiri 100%!",
    Duration = 4,
    Image = 4483345998,
 })
