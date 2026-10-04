@@ -18,9 +18,12 @@ getgenv().ApexFlags = {
     ESPBox = false,
     ESPName = false,
     ESPLine = false,
+    ESPChams = false,
     BoxColor = Color3.fromRGB(0, 255, 150),
     NameColor = Color3.fromRGB(255, 255, 255),
-    LineColor = Color3.fromRGB(255, 50, 50)
+    LineColor = Color3.fromRGB(255, 50, 50),
+    ChamsColor = Color3.fromRGB(255, 0, 128)
+   
 }
 
 -- Services
@@ -87,6 +90,22 @@ TabVisuals:CreateColorPicker({
     Color = Color3.fromRGB(255, 50, 50),
     Callback = function(Value)
         getgenv().ApexFlags.LineColor = Value
+    end,
+})
+
+TabVisuals:CreateToggle({
+   Name = "ESP CHAMS",
+   CurrentValue = false,
+   Callback = function(Value)
+      getgenv().ApexFlags.ESPChams = Value
+   end,
+})
+
+TabVisuals:CreateColorPicker({
+    Name = "Warna ESP Chams",
+    Color = Color3.fromRGB(255, 0, 128),
+    Callback = function(Value)
+        getgenv().ApexFlags.ChamsColor = Value
     end,
 })
 
@@ -204,3 +223,45 @@ Rayfield:Notify({
    Duration = 4,
    Image = 4483345998,
 })
+
+-- =================================================================
+-- ESP CHAMS BACKEND ENGINE
+-- =================================================================
+
+local function applyChams(player)
+    local function updateCharacter(char)
+        if not char then return end
+        
+        local highlight = char:FindFirstChild("ApexChams") or Instance.new("Highlight")
+        highlight.Name = "ApexChams"
+        highlight.Adornee = char
+        highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        highlight.FillTransparency = 0.5
+        highlight.OutlineTransparency = 0
+        highlight.Parent = char
+
+        local chamsConnection
+        chamsConnection = RunService.RenderStepped:Connect(function()
+            if char and char:Parent() and player ~= LocalPlayer then
+                if getgenv().ApexFlags.MasterESP and getgenv().ApexFlags.ESPChams then
+                    highlight.Enabled = true
+                    highlight.FillColor = getgenv().ApexFlags.ChamsColor
+                    highlight.OutlineColor = getgenv().ApexFlags.ChamsColor
+                else
+                    highlight.Enabled = false
+                end
+            else
+                highlight:Destroy()
+                if chamsConnection then chamsConnection:Disconnect() end
+            end
+        end)
+    end
+
+    if player.Character then updateCharacter(player.Character) end
+    player.CharacterAdded:Connect(updateCharacter)
+end
+
+for _, p in pairs(Players:GetPlayers()) do
+    if p ~= LocalPlayer then applyChams(p) end
+end
+Players.PlayerAdded:Connect(applyChams)
