@@ -15,8 +15,6 @@ if not player then return end
 local WALK_SPEED = 8
 local FLY_SPEED = 40
 local FLY_VERTICAL_SPEED = 30
--- Status animasi/state sebelum Fly
-local savedFlyState = {}
 
 -- CLEANUP SCRIPT LAMA
 if _G.JalanSantaiCleanup then
@@ -31,6 +29,9 @@ local verticalInput = 0
 
 local connections = {}
 local movers = {}
+-- Pengaturan animasi Fly dan Airwalk
+local savedAnimateState = {}
+local flyAnimationTracks = {}
 local flyConnection
 local airWalkConnection
 local airWalkAttachment
@@ -58,6 +59,65 @@ local function getCharacter()
     return character,
         character:FindFirstChildOfClass("Humanoid"),
         character:FindFirstChild("HumanoidRootPart")
+    
+-- Simpan dan hentikan animasi saat Fly aktif
+local function prepareFlyAnimation(humanoid)
+    if not humanoid then return end
+
+    local character = humanoid.Parent
+    if not character then return end
+
+    local animate = character:FindFirstChild("Animate")
+
+    if animate and savedAnimateState[humanoid] == nil then
+        savedAnimateState[humanoid] = {
+            animate = animate,
+            wasEnabled = animate.Enabled,
+        }
+    end
+
+    -- Hentikan animasi jatuh, berjalan, dan animasi lain
+    local animator = humanoid:FindFirstChildOfClass("Animator")
+    if animator then
+        flyAnimationTracks[humanoid] = {}
+
+        for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+            table.insert(flyAnimationTracks[humanoid], track)
+            track:Stop(0.1)
+        end
+    end
+
+    -- Nonaktifkan Animate agar animasi jatuh tidak diputar lagi
+    if animate and animate:IsA("LocalScript") then
+        animate.Enabled = false
+    end
+
+    humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+end
+
+-- Pulihkan sistem animasi setelah Fly berakhir
+local function restoreFlyAnimation(humanoid)
+    if not humanoid then return end
+
+    local saved = savedAnimateState[humanoid]
+
+    if saved then
+        local animate = saved.animate
+
+        if animate and animate.Parent then
+            animate.Enabled = saved.wasEnabled
+        end
+
+        savedAnimateState[humanoid] = nil
+    end
+
+    flyAnimationTracks[humanoid] = nil
+
+    if humanoid.Health > 0 then
+        humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+    end
+    end
+    
 end
 
 local function rememberSpeed(humanoid)
@@ -326,8 +386,13 @@ local function startFly()
 
     removeFlyObjects()
 
+    
     originalRotate[humanoid] = humanoid.AutoRotate
     humanoid.AutoRotate = false
+
+    -- Hilangkan animasi jatuh dan buat pose Fly kaku
+    prepareFlyAnimation(humanoid)
+    
 
     local velocity = Instance.new("BodyVelocity")
     velocity.Name = "LocalFlyVelocity"
