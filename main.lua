@@ -1,12 +1,11 @@
 -- ===================================================================
--- ZENITH • ULTRALIGHT v4.0 - BUG FIX EDITION (LUAU)
--- Fixed Logic Toggles, Reset State Handler, & Smooth Analog Fly
+-- ZENITH • ULTRALIGHT v4.1 - STABLE FLY & SELECTOR EDITION (LUAU)
+-- Rock-solid BodyVelocity Fly & Interactive Player Selector Widget
 -- ===================================================================
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
 local Lighting = game:GetService("Lighting")
 local TeleportService = game:GetService("TeleportService")
 local CoreGui = game:GetService("CoreGui")
@@ -78,6 +77,7 @@ end
 -- -------------------------------------------------------------------
 local function ResetCharacterState()
     State.AirWalkHeight = 0
+    State.Fly = false
     local hum = GetHumanoid(LocalPlayer)
     if hum then
         hum.PlatformStand = false
@@ -218,46 +218,59 @@ local function UpdateAirWalk()
     end
 end
 
--- FIXED FLY ENGINE (Zero Drift, Pure Analog Support)
+-- STABLE BODYVELOCITY FLY ENGINE (No Drift, Perfect Analog Control)
+local flyBV, flyBG = nil, nil
+
+local function ToggleFlyEngine(enabled)
+    local root = GetRoot(LocalPlayer)
+    local hum = GetHumanoid(LocalPlayer)
+    
+    if enabled and root and hum then
+        hum.PlatformStand = true
+        if flyBV then flyBV:Destroy() end
+        if flyBG then flyBG:Destroy() end
+        
+        flyBV = Instance.new("BodyVelocity")
+        flyBV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        flyBV.Velocity = Vector3.zero
+        flyBV.Parent = root
+        
+        flyBG = Instance.new("BodyGyro")
+        flyBG.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+        flyBG.CFrame = root.CFrame
+        flyBG.Parent = root
+    else
+        if flyBV then flyBV:Destroy() flyBV = nil end
+        if flyBG then flyBG:Destroy() flyBG = nil end
+        if hum then hum.PlatformStand = false end
+    end
+end
+
 RunService.RenderStepped:Connect(function()
     local root = GetRoot(LocalPlayer)
     local hum = GetHumanoid(LocalPlayer)
     
-    if State.Fly and root and hum then
-        hum.PlatformStand = true
+    if State.Fly and root and hum and flyBV and flyBG then
+        flyBG.CFrame = Camera.CFrame
         local moveDir = hum.MoveDirection
-        local camCFrame = Camera.CFrame
-        
         local targetVel = Vector3.zero
         
-        -- Jika analog disentuh/digerakkan
         if moveDir.Magnitude > 0.05 then
-            local lookVector = camCFrame.LookVector
-            local rightVector = camCFrame.RightVector
-            
-            -- Menghitung vektor gerak berdasarkan analog & orientasi kamera
-            local rawVector = (lookVector * -moveDir.Z) + (rightVector * moveDir.X)
-            if rawVector.Magnitude > 0 then
-                targetVel = rawVector.Unit * State.FlySpeed
-            end
+            local look = Camera.CFrame.LookVector
+            local right = Camera.CFrame.RightVector
+            local rawVector = (look * -moveDir.Z) + (right * moveDir.X)
+            targetVel = rawVector.Unit * State.FlySpeed
         end
         
-        -- Tambahan kontrol lompat/naik (Jump)
         if UserInputService:IsKeyDown(Enum.KeyCode.Space) or hum.Jump then
             targetVel = targetVel + Vector3.new(0, State.FlySpeed * 0.8, 0)
         end
         
-        -- Kunci kecepatan & matikan drift jika tidak disentuh
-        root.AssemblyLinearVelocity = targetVel
-        root.AssemblyAngularVelocity = Vector3.zero
-    elseif hum and not State.Fly then
-        if hum.PlatformStand then
-            hum.PlatformStand = false
-        end
+        flyBV.Velocity = targetVel
     end
 end)
 
--- FIXED NOCLIP ENGINE
+-- STABLE NOCLIP ENGINE
 RunService.Stepped:Connect(function()
     if State.Noclip and GetCharacter(LocalPlayer) then
         for _, part in pairs(GetCharacter(LocalPlayer):GetDescendants()) do
@@ -268,27 +281,12 @@ RunService.Stepped:Connect(function()
     end
 end)
 
-local function TeleportToPlayerByName(searchName)
-    if not searchName or searchName == "" then return end
+local function TeleportToPlayer(targetPlayer)
     local myRoot = GetRoot(LocalPlayer)
-    if not myRoot then return end
-    
-    searchName = string.lower(searchName)
-    local targetPlayer = nil
-    
-    for _, p in pairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer then
-            local pName = string.lower(p.Name)
-            local pDisplay = string.lower(p.DisplayName)
-            if string.find(pName, searchName) or string.find(pDisplay, searchName) then
-                targetPlayer = p
-                break
-            end
-        end
-    end
-    
-    if targetPlayer and GetRoot(targetPlayer) then
-        myRoot.CFrame = GetRoot(targetPlayer).CFrame * CFrame.new(0, 3, 0)
+    if not myRoot or not targetPlayer then return end
+    local targetRoot = GetRoot(targetPlayer)
+    if targetRoot then
+        myRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 3, 0)
     end
 end
 
@@ -309,8 +307,8 @@ local function TeleportFurthestPlayer()
         end
     end
     
-    if furthestPlayer and GetRoot(furthestPlayer) then
-        myRoot.CFrame = GetRoot(furthestPlayer).CFrame * CFrame.new(0, 3, 0)
+    if furthestPlayer then
+        TeleportToPlayer(furthestPlayer)
     end
 end
 
@@ -343,8 +341,8 @@ if gethui then ScreenGui.Parent = gethui() else ScreenGui.Parent = CoreGui end
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainPanel"
-MainFrame.Size = UDim2.new(0, 260, 0, 350)
-MainFrame.Position = UDim2.new(0.5, -130, 0.5, -175)
+MainFrame.Size = UDim2.new(0, 260, 0, 360)
+MainFrame.Position = UDim2.new(0.5, -130, 0.5, -180)
 MainFrame.BackgroundColor3 = Color3.fromRGB(14, 14, 20)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
@@ -495,6 +493,104 @@ local function CreateTextBox(placeholder, callback)
     end)
 end
 
+-- -------------------------------------------------------------------
+-- PLAYER SELECTOR WIDGET (< NAME >)
+-- -------------------------------------------------------------------
+local function CreatePlayerSelector()
+    local container = Instance.new("Frame")
+    container.Size = UDim2.new(1, -6, 0, 30)
+    container.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+    container.Parent = Scroll
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 5)
+    corner.Parent = container
+
+    local leftBtn = Instance.new("TextButton")
+    leftBtn.Size = UDim2.new(0, 30, 1, 0)
+    leftBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+    leftBtn.Text = "<"
+    leftBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    leftBtn.Font = Enum.Font.GothamBold
+    leftBtn.TextSize = 12
+    leftBtn.Parent = container
+    local lc = Instance.new("UICorner") lc.CornerRadius = UDim.new(0, 5) lc.Parent = leftBtn
+
+    local nameBtn = Instance.new("TextButton")
+    nameBtn.Size = UDim2.new(1, -64, 1, 0)
+    nameBtn.Position = UDim2.new(0, 32, 0, 0)
+    nameBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 38)
+    nameBtn.Text = "Pilih Player (TP)"
+    nameBtn.TextColor3 = Color3.fromRGB(100, 220, 255)
+    nameBtn.Font = Enum.Font.GothamSemibold
+    nameBtn.TextSize = 11
+    nameBtn.Parent = container
+    local nc = Instance.new("UICorner") nc.CornerRadius = UDim.new(0, 5) nc.Parent = nameBtn
+
+    local rightBtn = Instance.new("TextButton")
+    rightBtn.Size = UDim2.new(0, 30, 1, 0)
+    rightBtn.Position = UDim2.new(1, -30, 0, 0)
+    rightBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+    rightBtn.Text = ">"
+    rightBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    rightBtn.Font = Enum.Font.GothamBold
+    rightBtn.TextSize = 12
+    rightBtn.Parent = container
+    local rc = Instance.new("UICorner") rc.CornerRadius = UDim.new(0, 5) rc.Parent = rightBtn
+
+    local function getValidPlayers()
+        local list = {}
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer then
+                table.insert(list, p)
+            end
+        end
+        return list
+    end
+
+    local currentIndex = 1
+
+    local function updateDisplay()
+        local list = getValidPlayers()
+        if #list == 0 then
+            nameBtn.Text = "Tidak ada player"
+            return
+        end
+        if currentIndex > #list then currentIndex = 1 end
+        if currentIndex < 1 then currentIndex = #list end
+        local selectedP = list[currentIndex]
+        nameBtn.Text = selectedP.DisplayName or selectedP.Name
+    end
+
+    leftBtn.MouseButton1Click:Connect(function()
+        PlayClickSound()
+        currentIndex = currentIndex - 1
+        updateDisplay()
+    end)
+
+    rightBtn.MouseButton1Click:Connect(function()
+        PlayClickSound()
+        currentIndex = currentIndex + 1
+        updateDisplay()
+    end)
+
+    nameBtn.MouseButton1Click:Connect(function()
+        PlayClickSound()
+        local list = getValidPlayers()
+        if #list > 0 then
+            if currentIndex > #list then currentIndex = 1 end
+            local selectedP = list[currentIndex]
+            TeleportToPlayer(selectedP)
+        end
+    end)
+
+    task.spawn(function()
+        while task.wait(1) do
+            pcall(updateDisplay)
+        end
+    end)
+end
+
 -- Build Menu UI Elements
 CreateHeader("FITUR VISUAL")
 CreateToggle("ESP Box", function(v) State.ESPBox = v end)
@@ -506,10 +602,7 @@ CreateHeader("FITUR AKSI")
 CreateToggle("Air Walk", function(v) State.AirWalk = v end)
 CreateToggle("Fly Simple", function(v)
     State.Fly = v
-    if not v then
-        local hum = GetHumanoid(LocalPlayer)
-        if hum then hum.PlatformStand = false end
-    end
+    ToggleFlyEngine(v)
 end)
 CreateToggle("Noclip", function(v) State.Noclip = v end)
 CreateToggle("Bebas Kamera", function(v) State.BypassCamera = v end)
@@ -526,19 +619,4 @@ CreateTextBox("Input Speed Manual (Contoh: 50)", function(val)
     local num = tonumber(val)
     if num then
         State.WalkspeedValue = num
-        if State.WalkspeedToggle then
-            local hum = GetHumanoid(LocalPlayer)
-            if hum then hum.WalkSpeed = num end
-        end
-    end
-end)
-
-CreateTextBox("Cari Nama Player -> Enter TP", function(val)
-    TeleportToPlayerByName(val)
-end)
-
-CreateButton("TP Player Terjauh", function() TeleportFurthestPlayer() end)
-CreateButton("Rejoin Server", function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer) end)
-CreateButton("Hop Full Server", function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end)
-
-print("Zenith Ultralight v4.0 (Bug Fix Edition) loaded!")
+        i
