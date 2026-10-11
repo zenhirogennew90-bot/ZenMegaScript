@@ -1,6 +1,6 @@
 -- ===================================================================
--- ZENITH & ZEN HUB - UPDATED HYBRID SCRIPT (LUAU)
--- With RGB Rainbow Panel & Soft Button Click Sounds
+-- ZENITH & ZEN HUB - FIXED HYBRID SCRIPT (LUAU)
+-- True AirWalk, Stable Anti-Fall Noclip, Spectate with Auto-TP Back
 -- ===================================================================
 
 local Players = game:GetService("Players")
@@ -15,19 +15,17 @@ local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
 -- -------------------------------------------------------------------
--- SOUND EFFECTS (SOFT CLICK)
+-- SOUND EFFECTS
 -- -------------------------------------------------------------------
 local ClickSound = Instance.new("Sound")
 ClickSound.Name = "ZenClickSound"
-ClickSound.SoundId = "rbxassetid://6895079853" -- Soft Bubble / UI Click Sound
+ClickSound.SoundId = "rbxassetid://6895079853"
 ClickSound.Volume = 0.5
 ClickSound.Parent = SoundService
 
 local function PlayClickSound()
     pcall(function()
-        if ClickSound.IsPlaying then
-            ClickSound:Stop()
-        end
+        if ClickSound.IsPlaying then ClickSound:Stop() end
         ClickSound:Play()
     end)
 end
@@ -38,7 +36,6 @@ end
 local State = {
     -- Visual State
     ESPBox = false,
-    ESPName = false,
     ESPLine = false,
     ESPChams = false,
     Fullbright = false,
@@ -52,9 +49,9 @@ local State = {
     WalkspeedToggle = false,
     WalkspeedValue = 32,
     
-    -- Target & Search State
+    -- Target & Spectate State
     SpectateTarget = nil,
-    SearchQuery = ""
+    LastTargetCFrame = nil
 }
 
 local ESPStorage = {}
@@ -98,13 +95,10 @@ local function CreateESP(player)
     local box = Drawing.new("Square")
     box.Thickness = 1.5; box.Filled = false; box.Color = Color3.fromRGB(0, 255, 150); box.Visible = false
 
-    local name = Drawing.new("Text")
-    name.Size = 14; name.Center = true; name.Outline = true; name.Color = Color3.fromRGB(255, 255, 255); name.Visible = false
-
     local line = Drawing.new("Line")
     line.Thickness = 1; line.Color = Color3.fromRGB(0, 255, 150); line.Visible = false
 
-    ESPStorage[player] = {Box = box, Name = name, Line = line}
+    ESPStorage[player] = {Box = box, Line = line}
 end
 
 local function UpdateESP()
@@ -127,22 +121,16 @@ local function UpdateESP()
                     drawings.Box.Visible = true
                 else drawings.Box.Visible = false end
 
-                if State.ESPName then
-                    drawings.Name.Position = Vector2.new(pos.X, pos.Y - height / 2 - 16)
-                    drawings.Name.Text = string.format("%s [%dM]", player.DisplayName, math.floor((root.Position - GetRoot(LocalPlayer).Position).Magnitude))
-                    drawings.Name.Visible = true
-                else drawings.Name.Visible = false end
-
                 if State.ESPLine then
                     drawings.Line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
                     drawings.Line.To = Vector2.new(pos.X, pos.Y)
                     drawings.Line.Visible = true
                 else drawings.Line.Visible = false end
             else
-                drawings.Box.Visible = false; drawings.Name.Visible = false; drawings.Line.Visible = false
+                drawings.Box.Visible = false; drawings.Line.Visible = false
             end
         else
-            drawings.Box.Visible = false; drawings.Name.Visible = false; drawings.Line.Visible = false
+            drawings.Box.Visible = false; drawings.Line.Visible = false
         end
     end
 end
@@ -187,35 +175,50 @@ local function UpdateCameraSystem()
 end
 
 -- -------------------------------------------------------------------
--- ACTION FEATURES (AIRWALK WITH ANIMATION & SPECTATE TP)
+-- TRUE AIRWALK & STABLE ANTI-FALL NOCLIP ENGINE
 -- -------------------------------------------------------------------
 local AirWalkPlatform = Instance.new("Part")
-AirWalkPlatform.Size = Vector3.new(6, 1, 6)
+AirWalkPlatform.Size = Vector3.new(15, 1, 15)
 AirWalkPlatform.Anchored = true
 AirWalkPlatform.Transparency = 1
 AirWalkPlatform.CanCollide = false
+AirWalkPlatform.Name = "TrueAirWalkPlatform"
 AirWalkPlatform.Parent = workspace
 
 local function UpdateAirWalk()
     local root = GetRoot(LocalPlayer)
-    local hum = GetHumanoid(LocalPlayer)
-    if State.AirWalk and root and hum then
-        AirWalkPlatform.CFrame = CFrame.new(root.Position.X, root.Position.Y - 3.2, root.Position.Z)
+    if State.AirWalk and root then
+        AirWalkPlatform.CFrame = CFrame.new(root.Position.X, root.Position.Y - 3.1, root.Position.Z)
         AirWalkPlatform.CanCollide = true
-        
-        if hum.MoveDirection.Magnitude > 0 then
-            AirWalkPlatform.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-        end
     else
         AirWalkPlatform.CanCollide = false
     end
 end
 
+-- Noclip Anti-Jatuh (Tembus tembok tapi tetap berdiri di lantai/tanah)
 RunService.Stepped:Connect(function()
-    if State.Noclip and GetCharacter(LocalPlayer) then
-        for _, part in pairs(GetCharacter(LocalPlayer):GetDescendants()) do
-            if part:IsA("BasePart") and part.CanCollide then
-                part.CanCollide = false
+    local char = GetCharacter(LocalPlayer)
+    if State.Noclip and char then
+        for _, part in pairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                if part.Name == "HumanoidRootPart" or part.Name == "Head" then
+                    -- Biarkan bagian atas tetap bisa lewat
+                    part.CanCollide = false
+                else
+                    -- Gunakan raycast / deteksi posisi lantai agar kaki tetap berpijak dan tidak jatuh
+                    local raycastParams = RaycastParams.new()
+                    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+                    raycastParams.FilterDescendantsInstances = {char}
+                    
+                    local raycastResult = workspace:Raycast(part.Position, Vector3.new(0, -3.5, 0), raycastParams)
+                    if raycastResult then
+                        -- Jika ada lantai di bawah, aktifkan kolisi agar tidak jatuh
+                        part.CanCollide = true
+                    else
+                        -- Jika menembus dinding samping/atas, matikan kolisi (tembus)
+                        part.CanCollide = false
+                    end
+                end
             end
         end
     end
@@ -234,8 +237,8 @@ else ScreenGui.Parent = CoreGui end
 
 -- Center Floating Teleport Button
 local CenterTPBtn = Instance.new("TextButton")
-CenterTPBtn.Size = UDim2.new(0, 180, 0, 40)
-CenterTPBtn.Position = UDim2.new(0.5, -90, 0.85, 0)
+CenterTPBtn.Size = UDim2.new(0, 190, 0, 42)
+CenterTPBtn.Position = UDim2.new(0.5, -95, 0.82, 0)
 CenterTPBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
 CenterTPBtn.Text = "⚡ TELEPORT KE TARGET"
 CenterTPBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -256,23 +259,19 @@ end)
 
 -- Main Floating Panel
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 310, 0, 440)
-MainFrame.Position = UDim2.new(0.5, -155, 0.5, -220)
+MainFrame.Size = UDim2.new(0, 310, 0, 430)
+MainFrame.Position = UDim2.new(0.5, -155, 0.5, -215)
 MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
 MainFrame.Active = true; MainFrame.Draggable = true; MainFrame.ClipsDescendants = true
 MainFrame.Parent = ScreenGui
 
 local UICorner = Instance.new("UICorner") UICorner.CornerRadius = UDim.new(0, 10) UICorner.Parent = MainFrame
-
--- RGB Border Stroke
-local UIStroke = Instance.new("UIStroke")
-UIStroke.Thickness = 2
-UIStroke.Parent = MainFrame
+local UIStroke = Instance.new("UIStroke") UIStroke.Thickness = 2; UIStroke.Parent = MainFrame
 
 -- Title
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 0, 40); Title.Position = UDim2.new(0, 15, 0, 0)
-Title.Text = "ZENITH • MEGASHCRIPT v3.8"
+Title.Text = "ZENITH • MEGASHCRIPT v4.0"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255); Title.TextSize = 15; Title.Font = Enum.Font.GothamBold
 Title.TextXAlignment = Enum.TextXAlignment.Left; Title.BackgroundTransparency = 1; Title.Parent = MainFrame
 
@@ -343,22 +342,20 @@ end
 -- -------------------------------------------------------------------
 CreateSectionHeader("Fitur Visual")
 CreateToggle("ESP Box", State.ESPBox, function(v) State.ESPBox = v end)
-CreateToggle("ESP Name", State.ESPName, function(v) State.ESPName = v end)
 CreateToggle("ESP Line", State.ESPLine, function(v) State.ESPLine = v end)
 CreateToggle("ESP Chams", State.ESPChams, function(v) State.ESPChams = v; UpdateChams() end)
 CreateToggle("Fullbright", State.Fullbright, function(v) ToggleFullbright(v) end)
 CreateToggle("Camera X-Ray", State.CameraXRay, function(v) State.CameraXRay = v end)
 
 CreateSectionHeader("Fitur Aksi")
-CreateToggle("Air Walk (Animasi Aktif)", State.AirWalk, function(v) State.AirWalk = v end)
-CreateToggle("Noclip (Tembus Dinding)", State.Noclip, function(v) State.Noclip = v end)
+CreateToggle("Air Walk (Horizontal)", State.AirWalk, function(v) State.AirWalk = v end)
+CreateToggle("Noclip (Anti-Jatuh)", State.Noclip, function(v) State.Noclip = v end)
 CreateToggle("Bebas Kamera", State.BypassCamera, function(v) State.BypassCamera = v end)
 
 CreateToggle("Walkspeed Custom", State.WalkspeedToggle, function(v)
     State.WalkspeedToggle = v
 end)
 
--- TextBox Kecepatan Walkspeed
 local SpeedBox = Instance.new("TextBox")
 SpeedBox.Size = UDim2.new(1, -10, 0, 34); SpeedBox.BackgroundColor3 = Color3.fromRGB(28, 28, 38)
 SpeedBox.Text = "Atur Kecepatan (Default: 32)"; SpeedBox.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -374,7 +371,6 @@ end)
 
 CreateSectionHeader("Spectate & Teleport Player")
 
--- Input Search Player untuk Spectate
 local SearchBox = Instance.new("TextBox")
 SearchBox.Size = UDim2.new(1, -10, 0, 34); SearchBox.BackgroundColor3 = Color3.fromRGB(28, 28, 38)
 SearchBox.Text = "Ketik Nama Player untuk Spectate"; SearchBox.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -403,8 +399,16 @@ CreateToggle("Aktifkan Spectate Target", State.Spectate, function(v)
     State.Spectate = v
     CenterTPBtn.Visible = v
     if not v then
+        if GetHumanoid(LocalPlayer) then
+            Camera.CameraSubject = GetHumanoid(LocalPlayer)
+        end
+        
+        if State.LastTargetCFrame and GetRoot(LocalPlayer) then
+            GetRoot(LocalPlayer).CFrame = State.LastTargetCFrame * CFrame.new(0, 3, 0)
+        end
+        
         State.SpectateTarget = nil
-        Camera.CameraSubject = GetHumanoid(LocalPlayer)
+        State.LastTargetCFrame = nil
     end
 end)
 
@@ -417,11 +421,10 @@ CreateButton("Hop Server Lain", function()
 end)
 
 -- -------------------------------------------------------------------
--- MAIN LOOP & RGB ANIMATION ENGINE
+-- MAIN LOOP & RGB ENGINE
 -- -------------------------------------------------------------------
 local hue = 0
 RunService.RenderStepped:Connect(function(deltaTime)
-    -- RGB Rainbow Color Animation
     hue = (hue + deltaTime * 0.2) % 1
     local rgbColor = Color3.fromHSV(hue, 0.8, 1)
     
@@ -430,17 +433,17 @@ RunService.RenderStepped:Connect(function(deltaTime)
     ctpStroke.Color = rgbColor
     Scroll.ScrollBarImageColor3 = rgbColor
 
-    -- Updates
     UpdateESP()
     UpdateAirWalk()
     UpdateCameraSystem()
     
-    -- Update Spectate Logic
     if State.Spectate and State.SpectateTarget and GetHumanoid(State.SpectateTarget) then
         Camera.CameraSubject = GetHumanoid(State.SpectateTarget)
+        if GetRoot(State.SpectateTarget) then
+            State.LastTargetCFrame = GetRoot(State.SpectateTarget).CFrame
+        end
     end
     
-    -- Walkspeed Enforcer
     local hum = GetHumanoid(LocalPlayer)
     if hum and State.WalkspeedToggle then
         hum.WalkSpeed = State.WalkspeedValue
@@ -454,4 +457,4 @@ Players.PlayerRemoving:Connect(function(p)
     if State.SpectateTarget == p then State.SpectateTarget = nil end 
 end)
 
-print("ZENITH MegaScript Updated with RGB & Audio Feedback!")
+print("ZENITH MegaScript v4.0 Updated Successfully!")
