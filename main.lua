@@ -58,6 +58,10 @@ local State = {
     OriginalBrightness = Lighting.Brightness,
     OriginalClockTime = Lighting.ClockTime,
     OriginalFogEnd = Lighting.FogEnd
+
+    -- Camera Backup
+    OriginalMaxZoom = LocalPlayer.CameraMaxZoomDistance,
+    OriginalMinZoom = LocalPlayer.CameraMinZoomDistance
 }
 
 local ESPStorage = {}
@@ -177,6 +181,8 @@ local function UpdateCameraSystem()
         LocalPlayer.CameraMaxZoomDistance = 500
     else
         LocalPlayer.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode.Zoom
+        LocalPlayer.CameraMinZoomDistance = State.OriginalMinZoom
+        LocalPlayer.CameraMaxZoomDistance = State.OriginalMaxZoom
     end
 end
 
