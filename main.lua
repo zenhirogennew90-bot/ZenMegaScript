@@ -58,12 +58,7 @@ local State = {
     OriginalBrightness = Lighting.Brightness,
     OriginalClockTime = Lighting.ClockTime,
     OriginalFogEnd = Lighting.FogEnd
-
-    -- Camera Backup
-    OriginalMaxZoom = 128,
-    OriginalMinZoom = 0.5
-     }
-
+}
 
 local ESPStorage = {}
 
@@ -182,8 +177,6 @@ local function UpdateCameraSystem()
         LocalPlayer.CameraMaxZoomDistance = 500
     else
         LocalPlayer.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode.Zoom
-        LocalPlayer.CameraMinZoomDistance = State.OriginalMinZoom
-        LocalPlayer.CameraMaxZoomDistance = State.OriginalMaxZoom
     end
 end
 
@@ -471,9 +464,4 @@ CreateActionBtn("Hop Server", function()
 end)
 
 print("Zenith Compact Elegant Panel loaded successfully.")
-end)
-
-if not pcallSuccess then
-    warn("[Zenith Script Error]: " .. tostring(runtimeError))
-end
 
