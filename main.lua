@@ -471,3 +471,9 @@ CreateActionBtn("Hop Server", function()
 end)
 
 print("Zenith Compact Elegant Panel loaded successfully.")
+end)
+
+if not pcallSuccess then
+    warn("[Zenith Script Error]: " .. tostring(runtimeError))
+end
+
