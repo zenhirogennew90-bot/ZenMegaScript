@@ -1,6 +1,7 @@
 -- ===================================================================
 -- ZENITH COMPACT ELEGANT PANEL (LUAU)
 -- Compact 1:1 Ratio, Smooth UI, Quiet Sound, Mobile Optimized
+-- Added: Player Search Box (TP & Spectate Target) & Adjustable Walkspeed
 -- ===================================================================
 
 local Players = game:GetService("Players")
@@ -10,7 +11,6 @@ local TweenService = game:GetService("TweenService")
 local Lighting = game:GetService("Lighting")
 local TeleportService = game:GetService("TeleportService")
 local CoreGui = game:GetService("CoreGui")
-local SoundService = game:GetService("SoundService")
 
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
@@ -19,7 +19,7 @@ local Camera = workspace.CurrentCamera
 -- QUIET BUTTON SOUND EFFECT
 -- -------------------------------------------------------------------
 local ClickSound = Instance.new("Sound")
-ClickSound.SoundId = "rbxassetid://6899131464" -- Soft quiet click sound
+ClickSound.SoundId = "rbxassetid://6899131464"
 ClickSound.Volume = 0.25
 ClickSound.Parent = CoreGui
 
@@ -51,6 +51,7 @@ local State = {
     
     -- Target System
     TargetPlayer = nil,
+    SearchText = "",
     
     -- Lighting Backup
     OriginalAmbient = Lighting.Ambient,
@@ -77,6 +78,20 @@ end
 local function GetHumanoid(player)
     local char = GetCharacter(player)
     return char and char:FindFirstChildOfClass("Humanoid") or nil
+end
+
+local function FindPlayerByPartialName(nameStr)
+    if not nameStr or nameStr == "" then return nil end
+    local lowerQuery = string.lower(nameStr)
+    
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            if string.find(string.lower(p.Name), lowerQuery) or string.find(string.lower(p.DisplayName), lowerQuery) then
+                return p
+            end
+        end
+    end
+    return nil
 end
 
 -- -------------------------------------------------------------------
@@ -236,32 +251,6 @@ local function UpdateAttachFront()
     end
 end
 
--- -------------------------------------------------------------------
--- SEARCH PLAYER FUNCTIONALITY
--- -------------------------------------------------------------------
-local function SearchAndSetTarget(searchText)
-    if not searchText or searchText == "" then
-        State.TargetPlayer = nil
-        return false, "Nama Kosong"
-    end
-    
-    local textLower = string.lower(searchText)
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then
-            local nameMatch = string.find(string.lower(player.Name), textLower, 1, true)
-            local displayMatch = string.find(string.lower(player.DisplayName), textLower, 1, true)
-            
-            if nameMatch or displayMatch then
-                State.TargetPlayer = player
-                return true, player.DisplayName
-            end
-        end
-    end
-    
-    State.TargetPlayer = nil
-    return false, "Tidak Ditemukan"
-end
-
 local function TeleportToPlayer(target)
     local targetRoot = GetRoot(target)
     local myRoot = GetRoot(LocalPlayer)
@@ -308,7 +297,7 @@ Players.PlayerRemoving:Connect(function(p)
 end)
 
 -- -------------------------------------------------------------------
--- ELEGANT COMPACT 1:1 UI PANEL IMPLEMENTATION
+-- ELEGANT COMPACT UI PANEL IMPLEMENTATION
 -- -------------------------------------------------------------------
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ZenithCompactGui"
@@ -323,10 +312,9 @@ else
     ScreenGui.Parent = CoreGui
 end
 
--- Compact Main Frame (Efficient & Small)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainPanel"
-MainFrame.Size = UDim2.new(0, 280, 0, 280) -- Balanced 1:1 Compact Aspect
+MainFrame.Size = UDim2.new(0, 280, 0, 280)
 MainFrame.Position = UDim2.new(0.5, -140, 0.5, -140)
 MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 MainFrame.BorderSizePixel = 0
@@ -471,68 +459,134 @@ CreateHeaderLabel("AKSI")
 CreateToggleBtn("Air Walk", function() return State.AirWalk end, function(v) State.AirWalk = v end)
 CreateToggleBtn("Noclip", function() return State.Noclip end, function(v) State.Noclip = v end)
 CreateToggleBtn("Bebas Kamera", function() return State.BypassCamera end, function(v) State.BypassCamera = v end)
-CreateToggleBtn("Walkspeed (100)", function() return State.WalkspeedToggle end, function(v) 
-    State.WalkspeedToggle = v
-    State.WalkspeedValue = v and 100 or 16
+
+-- WALKSPEED (Adjustable Input)
+local WSContainer = Instance.new("Frame")
+WSContainer.Size = UDim2.new(1, -4, 0, 30)
+WSContainer.BackgroundColor3 = Color3.fromRGB(24, 24, 34)
+WSContainer.Parent = Scroll
+
+local WSCorner = Instance.new("UICorner")
+WSCorner.CornerRadius = UDim.new(0, 4)
+WSCorner.Parent = WSContainer
+
+local WSToggleBtn = Instance.new("TextButton")
+WSToggleBtn.Size = UDim2.new(0.65, 0, 1, 0)
+WSToggleBtn.Position = UDim2.new(0, 0, 0, 0)
+WSToggleBtn.BackgroundTransparency = 1
+WSToggleBtn.Font = Enum.Font.GothamSemibold
+WSToggleBtn.TextSize = 10
+WSToggleBtn.Parent = WSContainer
+
+local function RefreshWS()
+    WSToggleBtn.Text = "Walkspeed (" .. tostring(State.WalkspeedValue) .. ") -> " .. (State.WalkspeedToggle and "ON" or "OFF")
+    WSToggleBtn.TextColor3 = State.WalkspeedToggle and Color3.fromRGB(130, 255, 170) or Color3.fromRGB(180, 180, 180)
+    WSContainer.BackgroundColor3 = State.WalkspeedToggle and Color3.fromRGB(28, 42, 34) or Color3.fromRGB(24, 24, 34)
+end
+RefreshWS()
+
+WSToggleBtn.MouseButton1Click:Connect(function()
+    PlayQuietClick()
+    State.WalkspeedToggle = not State.WalkspeedToggle
+    RefreshWS()
 end)
 
-local SearchBoxFrame = Instance.new("Frame")
-SearchBoxFrame.Size = UDim2.new(1, -4, 0, 28)
-SearchBoxFrame.BackgroundColor3 = Color3.fromRGB(24, 24, 34)
-SearchBoxFrame.Parent = Scroll
+local WSInput = Instance.new("TextBox")
+WSInput.Size = UDim2.new(0.32, -4, 0.8, 0)
+WSInput.Position = UDim2.new(0.68, 0, 0.1, 0)
+WSInput.BackgroundColor3 = Color3.fromRGB(18, 18, 26)
+WSInput.Text = tostring(State.WalkspeedValue)
+WSInput.TextColor3 = Color3.fromRGB(220, 220, 240)
+WSInput.Font = Enum.Font.GothamBold
+WSInput.TextSize = 10
+WSInput.ClearTextOnFocus = false
+WSInput.Parent = WSContainer
 
-local SearchBoxCorner = Instance.new("UICorner")
-SearchBoxCorner.CornerRadius = UDim.new(0, 4)
-SearchBoxCorner.Parent = SearchBoxFrame
+local WSInputCorner = Instance.new("UICorner")
+WSInputCorner.CornerRadius = UDim.new(0, 3)
+WSInputCorner.Parent = WSInput
 
-local SearchBoxStroke = Instance.new("UIStroke")
-SearchBoxStroke.Color = Color3.fromRGB(60, 60, 90)
-SearchBoxStroke.Thickness = 1
-SearchBoxStroke.Parent = SearchBoxFrame
+WSInput.FocusLost:Connect(function()
+    local num = tonumber(WSInput.Text)
+    if num and num > 0 then
+        State.WalkspeedValue = num
+    else
+        WSInput.Text = tostring(State.WalkspeedValue)
+    end
+    RefreshWS()
+end)
 
-local SearchTextBox = Instance.new("TextBox")
-SearchTextBox.Size = UDim2.new(1, -10, 1, 0)
-SearchTextBox.Position = UDim2.new(0, 5, 0, 0)
-SearchTextBox.BackgroundTransparency = 1
-SearchTextBox.Text = ""
-SearchTextBox.PlaceholderText = "Cari Player (Ketik Nama)..."
-SearchTextBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 150)
-SearchTextBox.TextColor3 = Color3.fromRGB(220, 220, 240)
-SearchTextBox.Font = Enum.Font.GothamSemibold
-SearchTextBox.TextSize = 10
-SearchTextBox.ClearTextOnFocus = false
-SearchTextBox.TextXAlignment = Enum.TextXAlignment.Left
-SearchTextBox.Parent = SearchBoxFrame
+-- PLAYER SEARCH BOX (Diletakkan di atas TP To Target)
+local SearchContainer = Instance.new("Frame")
+SearchContainer.Size = UDim2.new(1, -4, 0, 30)
+SearchContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
+SearchContainer.Parent = Scroll
 
-SearchTextBox:GetPropertyChangedSignal("Text"):Connect(function()
-    local text = SearchTextBox.Text
-    if text ~= "" then
-        local found, _ = SearchAndSetTarget(text)
-        if found then
-            SearchBoxStroke.Color = Color3.fromRGB(130, 255, 170)
-        else
-            SearchBoxStroke.Color = Color3.fromRGB(255, 100, 100)
-        end
+local SearchCorner = Instance.new("UICorner")
+SearchCorner.CornerRadius = UDim.new(0, 4)
+SearchCorner.Parent = SearchContainer
+
+local SearchStroke = Instance.new("UIStroke")
+SearchStroke.Color = Color3.fromRGB(70, 70, 110)
+SearchStroke.Thickness = 1
+SearchStroke.Parent = SearchContainer
+
+local SearchInput = Instance.new("TextBox")
+SearchInput.Size = UDim2.new(1, -10, 1, 0)
+SearchInput.Position = UDim2.new(0, 5, 0, 0)
+SearchInput.BackgroundTransparency = 1
+SearchInput.PlaceholderText = "Ketik Nama Player..."
+SearchInput.PlaceholderColor3 = Color3.fromRGB(120, 120, 150)
+SearchInput.Text = ""
+SearchInput.TextColor3 = Color3.fromRGB(240, 240, 255)
+SearchInput.Font = Enum.Font.GothamSemibold
+SearchInput.TextSize = 10
+SearchInput.TextXAlignment = Enum.TextXAlignment.Left
+SearchInput.ClearTextOnFocus = false
+SearchInput.Parent = SearchContainer
+
+local StatusLabel = Instance.new("TextLabel")
+StatusLabel.Size = UDim2.new(1, -4, 0, 16)
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.Text = "Target: NONE"
+StatusLabel.TextColor3 = Color3.fromRGB(150, 150, 180)
+StatusLabel.Font = Enum.Font.Gotham
+StatusLabel.TextSize = 9
+StatusLabel.Parent = Scroll
+
+SearchInput:GetPropertyChangedSignal("Text"):Connect(function()
+    local query = SearchInput.Text
+    local foundPlayer = FindPlayerByPartialName(query)
+    if foundPlayer then
+        State.TargetPlayer = foundPlayer
+        StatusLabel.Text = "Target: " .. foundPlayer.DisplayName .. " (@" .. foundPlayer.Name .. ")"
+        StatusLabel.TextColor3 = Color3.fromRGB(130, 255, 170)
     else
         State.TargetPlayer = nil
-        SearchBoxStroke.Color = Color3.fromRGB(60, 60, 90)
+        StatusLabel.Text = (query == "" and "Target: NONE" or "Target Tidak Ditemukan")
+        StatusLabel.TextColor3 = Color3.fromRGB(200, 100, 100)
     end
-end
-
-CreateActionBtn("Teleport To Target", function()
-    if State.TargetPlayer then TeleportToPlayer(State.TargetPlayer) end
 end)
+
+-- TP TO TARGET (Mengikuti target dari pencarian di atas)
+CreateActionBtn("Teleport To Target", function()
+    if State.TargetPlayer then 
+        TeleportToPlayer(State.TargetPlayer) 
+    end
+end)
+
 CreateActionBtn("Teleport Random", function()
     TeleportRandom()
+    if State.TargetPlayer then
+        StatusLabel.Text = "Target: " .. State.TargetPlayer.DisplayName .. " (@" .. State.TargetPlayer.Name .. ")"
+        StatusLabel.TextColor3 = Color3.fromRGB(130, 255, 170)
+    end
 end)
+
 CreateToggleBtn("Attach Front", function() return State.AttachFront end, function(v) State.AttachFront = v end)
+
 CreateActionBtn("Rejoin Server", function()
     TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
 end)
-CreateActionBtn("Hop Server", function()
-    TeleportService:Teleport(game.PlaceId, LocalPlayer)
-end)
 
-print("Zenith Compact Elegant Panel loaded successfully.")
-
-    
+CreateActionBtn("Hop Server", function
