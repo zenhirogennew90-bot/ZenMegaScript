@@ -1,5 +1,5 @@
 -- ===================================================================
--- ZENITH • ULTRALIGHT v4.2 - OPTIMIZED & CLEAN EDITION (LUAU)
+-- ZENITH • ULTRALIGHT v4.3 - GUARANTEED UI EDITION (LUAU)
 -- ===================================================================
 
 local Players = game:GetService("Players")
@@ -78,7 +78,6 @@ Players.PlayerAdded:Connect(CreateESP)
 Players.PlayerRemoving:Connect(ClearESP)
 
 RunService.RenderStepped:Connect(function()
-    -- ESP Update
     for p, d in pairs(ESPStorage) do
         local root = GetRoot(p)
         local hum = GetHumanoid(p)
@@ -103,7 +102,6 @@ RunService.RenderStepped:Connect(function()
         else d.Box.Visible = false; d.Line.Visible = false end
     end
 
-    -- Fullbright
     if State.Fullbright then
         Lighting.Ambient = Color3.new(1,1,1)
         Lighting.OutdoorAmbient = Color3.new(1,1,1)
@@ -116,7 +114,6 @@ RunService.RenderStepped:Connect(function()
         Lighting.FogEnd = State.OrigFog
     end
 
-    -- Camera X-Ray / Bypass
     if State.CameraXRay or State.BypassCamera then
         LocalPlayer.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode.Invisicam
         LocalPlayer.CameraMaxZoomDistance = 500
@@ -125,7 +122,6 @@ RunService.RenderStepped:Connect(function()
         LocalPlayer.CameraMaxZoomDistance = 128
     end
 
-    -- Walkspeed
     local hum = GetHumanoid(LocalPlayer)
     if hum and State.WalkspeedToggle then hum.WalkSpeed = State.WalkspeedValue end
 end)
@@ -149,7 +145,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Stable Fly Engine
+-- Fly Engine
 local flyBV, flyBG = nil, nil
 local function ToggleFly(enabled)
     local root = GetRoot(LocalPlayer)
@@ -224,16 +220,23 @@ local function TPFurthest()
     if furthest then TPToPlayer(furthest) end
 end
 
--- UI Implementation (Guaranteed Visible)
+-- ===================================================================
+-- UI IMPLEMENTATION (SAFE & GUARANTEED VISIBLE)
+-- ===================================================================
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ZenithUI"
 ScreenGui.ResetOnSpawn = false
 
-pcall(function()
-    if gethui then ScreenGui.Parent = gethui()
-    else ScreenGui.Parent = CoreGui end
+-- Safe Parent Method for Mobile Executors
+local success = pcall(function()
+    if gethui then
+        ScreenGui.Parent = gethui()
+    else
+        ScreenGui.Parent = CoreGui
+    end
 end)
-if not ScreenGui.Parent then
+
+if not success or not ScreenGui.Parent then
     ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 end
 
@@ -322,7 +325,7 @@ local function AddSelector()
 
     local lb = Instance.new("TextButton", f)
     lb.Size = UDim2.new(0, 30, 1, 0); lb.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
-    lb.Text = "<"; lb.TextColor3 = Color3.Color3 and Color3.fromRGB(255,255,255) or Color3.fromRGB(255,255,255)
+    lb.Text = "<"; lb.TextColor3 = Color3.fromRGB(255, 255, 255)
     lb.Font = Enum.Font.GothamBold; lb.TextSize = 12
     Instance.new("UICorner", lb).CornerRadius = UDim.new(0, 5)
 
@@ -369,7 +372,7 @@ local function AddSelector()
     end)
 end
 
--- Build Menu UI
+-- Build Menu UI Elements
 AddHeader("FITUR VISUAL")
 AddToggle("ESP Box", function(v) State.ESPBox = v end)
 AddToggle("ESP Line", function(v) State.ESPLine = v end)
@@ -402,4 +405,4 @@ AddButton("TP Player Terjauh", TPFurthest)
 AddButton("Rejoin Server", function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer) end)
 AddButton("Hop Full Server", function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end)
 
-print("Zenith Ultralight v4.2 loaded successfully!")
+print("Zenith Ultralight v4.3 loaded successfully!")
