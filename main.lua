@@ -60,9 +60,10 @@ local State = {
     OriginalFogEnd = Lighting.FogEnd
 
     -- Camera Backup
-    OriginalMaxZoom = LocalPlayer.CameraMaxZoomDistance,
-    OriginalMinZoom = LocalPlayer.CameraMinZoomDistance
-}
+    OriginalMaxZoom = 128,
+    OriginalMinZoom = 0.5
+     }
+
 
 local ESPStorage = {}
 
