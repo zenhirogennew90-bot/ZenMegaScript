@@ -44,6 +44,7 @@ local State = {
     
     -- Action State
     AirWalk = false,
+    AirWalkHeight = 0,
     Noclip = false,
     BypassCamera = false,
     WalkspeedToggle = false,
@@ -177,23 +178,22 @@ end
 -- -------------------------------------------------------------------
 -- TRUE AIRWALK & STABLE ANTI-FALL NOCLIP ENGINE
 -- -------------------------------------------------------------------
-local AirWalkPlatform = Instance.new("Part")
-AirWalkPlatform.Size = Vector3.new(15, 1, 15)
-AirWalkPlatform.Anchored = true
-AirWalkPlatform.Transparency = 1
-AirWalkPlatform.CanCollide = false
-AirWalkPlatform.Name = "TrueAirWalkPlatform"
-AirWalkPlatform.Parent = workspace
-
 local function UpdateAirWalk()
     local root = GetRoot(LocalPlayer)
     if State.AirWalk and root then
-        AirWalkPlatform.CFrame = CFrame.new(root.Position.X, root.Position.Y - 3.1, root.Position.Z)
+        if State.AirWalkHeight == 0 then
+            State.AirWalkHeight = root.Position.Y - 3.1
+        end
+        AirWalkPlatform.CFrame = CFrame.new(root.Position.X, State.AirWalkHeight, root.Position.Z)
         AirWalkPlatform.CanCollide = true
     else
         AirWalkPlatform.CanCollide = false
+        if root then
+            State.AirWalkHeight = 0
+        end
     end
 end
+
 
 -- Noclip Anti-Jatuh (Tembus tembok tapi tetap berdiri di lantai/tanah)
 RunService.Stepped:Connect(function()
