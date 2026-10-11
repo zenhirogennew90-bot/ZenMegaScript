@@ -1,6 +1,6 @@
 -- ===================================================================
--- ZENITH • ULTRALIGHT v3.9 - CUSTOM ACTION EDITION (LUAU)
--- Support Walkspeed Manual, Analog Fly, & TP Search Name
+-- ZENITH • ULTRALIGHT v4.0 - BUG FIX EDITION (LUAU)
+-- Fixed Logic Toggles, Reset State Handler, & Smooth Analog Fly
 -- ===================================================================
 
 local Players = game:GetService("Players")
@@ -72,6 +72,26 @@ local function GetHumanoid(player)
     local char = GetCharacter(player)
     return char and char:FindFirstChildOfClass("Humanoid") or nil
 end
+
+-- -------------------------------------------------------------------
+-- RESET ON SPAWN HANDLER
+-- -------------------------------------------------------------------
+local function ResetCharacterState()
+    State.AirWalkHeight = 0
+    local hum = GetHumanoid(LocalPlayer)
+    if hum then
+        hum.PlatformStand = false
+        if not State.WalkspeedToggle then
+            hum.WalkSpeed = 16
+        end
+    end
+end
+
+LocalPlayer.CharacterAdded:Connect(function(char)
+    char:WaitForChild("Humanoid")
+    task.wait(0.5)
+    ResetCharacterState()
+end)
 
 -- -------------------------------------------------------------------
 -- VISUAL FEATURES
@@ -169,6 +189,7 @@ local function UpdateCameraSystem()
         LocalPlayer.CameraMaxZoomDistance = 500
     else
         LocalPlayer.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode.Zoom
+        LocalPlayer.CameraMaxZoomDistance = 128
     end
 end
 
@@ -180,6 +201,7 @@ AirWalkPlatform.Size = Vector3.new(6, 0.8, 6)
 AirWalkPlatform.Anchored = true
 AirWalkPlatform.Transparency = 1
 AirWalkPlatform.CanCollide = false
+AirWalkPlatform.Name = "ZenAirWalkPlatform"
 AirWalkPlatform.Parent = workspace
 
 local function UpdateAirWalk()
@@ -192,11 +214,11 @@ local function UpdateAirWalk()
         AirWalkPlatform.CanCollide = true
     else
         AirWalkPlatform.CanCollide = false
-        if root then State.AirWalkHeight = root.Position.Y - 3.2 end
+        if root then State.AirWalkHeight = 0 end
     end
 end
 
--- Fly Engine (Analog & Touch Support)
+-- FIXED FLY ENGINE (Zero Drift, Pure Analog Support)
 RunService.RenderStepped:Connect(function()
     local root = GetRoot(LocalPlayer)
     local hum = GetHumanoid(LocalPlayer)
@@ -206,32 +228,40 @@ RunService.RenderStepped:Connect(function()
         local moveDir = hum.MoveDirection
         local camCFrame = Camera.CFrame
         
-        local finalVelocity = Vector3.new()
-        if moveDir.Magnitude > 0 then
-            local forward = camCFrame.LookVector
-            local right = camCFrame.RightVector
-            local rawVector = (forward * -moveDir.Z) + (right * moveDir.X)
-            finalVelocity = rawVector.Unit * State.FlySpeed
-        else
-            finalVelocity = Vector3.new(0, 0, 0)
+        local targetVel = Vector3.zero
+        
+        -- Jika analog disentuh/digerakkan
+        if moveDir.Magnitude > 0.05 then
+            local lookVector = camCFrame.LookVector
+            local rightVector = camCFrame.RightVector
+            
+            -- Menghitung vektor gerak berdasarkan analog & orientasi kamera
+            local rawVector = (lookVector * -moveDir.Z) + (rightVector * moveDir.X)
+            if rawVector.Magnitude > 0 then
+                targetVel = rawVector.Unit * State.FlySpeed
+            end
         end
         
+        -- Tambahan kontrol lompat/naik (Jump)
         if UserInputService:IsKeyDown(Enum.KeyCode.Space) or hum.Jump then
-            finalVelocity = finalVelocity + Vector3.new(0, State.FlySpeed * 0.8, 0)
+            targetVel = targetVel + Vector3.new(0, State.FlySpeed * 0.8, 0)
         end
         
-        root.Velocity = finalVelocity
-        root.CFrame = CFrame.new(root.Position, root.Position + camCFrame.LookVector)
+        -- Kunci kecepatan & matikan drift jika tidak disentuh
+        root.AssemblyLinearVelocity = targetVel
+        root.AssemblyAngularVelocity = Vector3.zero
     elseif hum and not State.Fly then
-        hum.PlatformStand = false
+        if hum.PlatformStand then
+            hum.PlatformStand = false
+        end
     end
 end)
 
--- Noclip Engine
+-- FIXED NOCLIP ENGINE
 RunService.Stepped:Connect(function()
     if State.Noclip and GetCharacter(LocalPlayer) then
         for _, part in pairs(GetCharacter(LocalPlayer):GetDescendants()) do
-            if part:IsA("BasePart") and part.CanCollide then
+            if part:IsA("BasePart") then
                 part.CanCollide = false
             end
         end
@@ -239,7 +269,7 @@ RunService.Stepped:Connect(function()
 end)
 
 local function TeleportToPlayerByName(searchName)
-    if searchName == "" then return end
+    if not searchName or searchName == "" then return end
     local myRoot = GetRoot(LocalPlayer)
     if not myRoot then return end
     
@@ -474,15 +504,32 @@ CreateToggle("Camera X-Ray", function(v) State.CameraXRay = v end)
 
 CreateHeader("FITUR AKSI")
 CreateToggle("Air Walk", function(v) State.AirWalk = v end)
-CreateToggle("Fly Simple", function(v) State.Fly = v end)
+CreateToggle("Fly Simple", function(v)
+    State.Fly = v
+    if not v then
+        local hum = GetHumanoid(LocalPlayer)
+        if hum then hum.PlatformStand = false end
+    end
+end)
 CreateToggle("Noclip", function(v) State.Noclip = v end)
 CreateToggle("Bebas Kamera", function(v) State.BypassCamera = v end)
 
-CreateToggle("Walkspeed Toggle", function(v) State.WalkspeedToggle = v end)
+CreateToggle("Walkspeed Toggle", function(v)
+    State.WalkspeedToggle = v
+    if not v then
+        local hum = GetHumanoid(LocalPlayer)
+        if hum then hum.WalkSpeed = 16 end
+    end
+end)
+
 CreateTextBox("Input Speed Manual (Contoh: 50)", function(val)
     local num = tonumber(val)
     if num then
         State.WalkspeedValue = num
+        if State.WalkspeedToggle then
+            local hum = GetHumanoid(LocalPlayer)
+            if hum then hum.WalkSpeed = num end
+        end
     end
 end)
 
@@ -494,4 +541,4 @@ CreateButton("TP Player Terjauh", function() TeleportFurthestPlayer() end)
 CreateButton("Rejoin Server", function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer) end)
 CreateButton("Hop Full Server", function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end)
 
-print("Zenith Ultralight v3.9 successfully loaded!")
+print("Zenith Ultralight v4.0 (Bug Fix Edition) loaded!")
