@@ -1,6 +1,6 @@
 -- ===================================================================
--- ZENITH • ULTRALIGHT v3.8 - COMPACT HYBRID SCRIPT (LUAU)
--- Optimized for Delta Executor & Mobile Gaming (Clean, Smooth, 1:1 UI)
+-- ZENITH • ULTRALIGHT v3.9 - CUSTOM ACTION EDITION (LUAU)
+-- Support Walkspeed Manual, Analog Fly, & TP Search Name
 -- ===================================================================
 
 local Players = game:GetService("Players")
@@ -32,7 +32,8 @@ local State = {
     FlySpeed = 50,
     Noclip = false,
     BypassCamera = false,
-    Walkspeed = false,
+    WalkspeedToggle = false,
+    WalkspeedValue = 16,
     
     -- Backup Lighting
     OriginalAmbient = Lighting.Ambient,
@@ -42,13 +43,11 @@ local State = {
     OriginalFogEnd = Lighting.FogEnd
 }
 
--- Storage for ESP Drawings & Chams
 local ESPStorage = {}
 
--- Sound Effect Generator (Tenang & Lembut)
 local function PlayClickSound()
     local sound = Instance.new("Sound")
-    sound.SoundId = "rbxassetid://9114220405" -- Clean subtle UI click sound
+    sound.SoundId = "rbxassetid://9114220405"
     sound.Volume = 0.3
     sound.Parent = SoundService
     sound:Play()
@@ -197,35 +196,33 @@ local function UpdateAirWalk()
     end
 end
 
--- Fly Simple Engine
+-- Fly Engine (Analog & Touch Support)
 RunService.RenderStepped:Connect(function()
     local root = GetRoot(LocalPlayer)
     local hum = GetHumanoid(LocalPlayer)
     
     if State.Fly and root and hum then
         hum.PlatformStand = true
+        local moveDir = hum.MoveDirection
         local camCFrame = Camera.CFrame
-        local moveDir = Vector3.new()
         
-        if UserInputService:IsKeyDown(Enum.KeyCode.W) or UserInputService:IsKeyDown(Enum.KeyCode.Up) then
-            moveDir = moveDir + camCFrame.LookVector
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.S) or UserInputService:IsKeyDown(Enum.KeyCode.Down) then
-            moveDir = moveDir - camCFrame.LookVector
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.A) or UserInputService:IsKeyDown(Enum.KeyCode.Left) then
-            moveDir = moveDir - camCFrame.RightVector
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.D) or UserInputService:IsKeyDown(Enum.KeyCode.Right) then
-            moveDir = moveDir + camCFrame.RightVector
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-            moveDir = moveDir + Vector3.new(0, 1, 0)
+        local finalVelocity = Vector3.new()
+        if moveDir.Magnitude > 0 then
+            local forward = camCFrame.LookVector
+            local right = camCFrame.RightVector
+            local rawVector = (forward * -moveDir.Z) + (right * moveDir.X)
+            finalVelocity = rawVector.Unit * State.FlySpeed
+        else
+            finalVelocity = Vector3.new(0, 0, 0)
         end
         
-        root.Velocity = moveDir * State.FlySpeed
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) or hum.Jump then
+            finalVelocity = finalVelocity + Vector3.new(0, State.FlySpeed * 0.8, 0)
+        end
+        
+        root.Velocity = finalVelocity
         root.CFrame = CFrame.new(root.Position, root.Position + camCFrame.LookVector)
-    elseif hum then
+    elseif hum and not State.Fly then
         hum.PlatformStand = false
     end
 end)
@@ -240,6 +237,30 @@ RunService.Stepped:Connect(function()
         end
     end
 end)
+
+local function TeleportToPlayerByName(searchName)
+    if searchName == "" then return end
+    local myRoot = GetRoot(LocalPlayer)
+    if not myRoot then return end
+    
+    searchName = string.lower(searchName)
+    local targetPlayer = nil
+    
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            local pName = string.lower(p.Name)
+            local pDisplay = string.lower(p.DisplayName)
+            if string.find(pName, searchName) or string.find(pDisplay, searchName) then
+                targetPlayer = p
+                break
+            end
+        end
+    end
+    
+    if targetPlayer and GetRoot(targetPlayer) then
+        myRoot.CFrame = GetRoot(targetPlayer).CFrame * CFrame.new(0, 3, 0)
+    end
+end
 
 local function TeleportFurthestPlayer()
     local myRoot = GetRoot(LocalPlayer)
@@ -270,8 +291,10 @@ RunService.RenderStepped:Connect(function()
     UpdateCameraSystem()
     
     local hum = GetHumanoid(LocalPlayer)
-    if hum and State.Walkspeed then
-        hum.WalkSpeed = 80
+    if hum then
+        if State.WalkspeedToggle then
+            hum.WalkSpeed = State.WalkspeedValue
+        end
     end
 end)
 
@@ -281,7 +304,7 @@ Players.PlayerAdded:Connect(function(p) CreateESP(p) end)
 Players.PlayerRemoving:Connect(function(p) ClearESP(p) end)
 
 -- -------------------------------------------------------------------
--- COMPACT 1:1 UI PANEL IMPLEMENTATION (VISUAL GAMING ELEGANT)
+-- COMPACT 1:1 UI PANEL IMPLEMENTATION
 -- -------------------------------------------------------------------
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ZenithUltralightGui"
@@ -290,8 +313,8 @@ if gethui then ScreenGui.Parent = gethui() else ScreenGui.Parent = CoreGui end
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainPanel"
-MainFrame.Size = UDim2.new(0, 260, 0, 340)
-MainFrame.Position = UDim2.new(0.5, -130, 0.5, -170)
+MainFrame.Size = UDim2.new(0, 260, 0, 350)
+MainFrame.Position = UDim2.new(0.5, -130, 0.5, -175)
 MainFrame.BackgroundColor3 = Color3.fromRGB(14, 14, 20)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
@@ -320,7 +343,7 @@ Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.BackgroundTransparency = 1
 Title.Parent = MainFrame
 
--- Close / Hide Button
+-- Close Button
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Size = UDim2.new(0, 22, 0, 22)
 CloseBtn.Position = UDim2.new(1, -28, 0, 6)
@@ -418,6 +441,30 @@ local function CreateButton(text, callback)
     end)
 end
 
+local function CreateTextBox(placeholder, callback)
+    local box = Instance.new("TextBox")
+    box.Size = UDim2.new(1, -6, 0, 28)
+    box.BackgroundColor3 = Color3.fromRGB(18, 18, 26)
+    box.PlaceholderText = placeholder
+    box.Text = ""
+    box.TextColor3 = Color3.fromRGB(240, 240, 240)
+    box.PlaceholderColor3 = Color3.fromRGB(120, 120, 150)
+    box.Font = Enum.Font.GothamSemibold
+    box.TextSize = 11
+    box.Parent = Scroll
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 5)
+    corner.Parent = box
+
+    box.FocusLost:Connect(function(enterPressed)
+        if enterPressed then
+            PlayClickSound()
+            pcall(callback, box.Text)
+        end
+    end)
+end
+
 -- Build Menu UI Elements
 CreateHeader("FITUR VISUAL")
 CreateToggle("ESP Box", function(v) State.ESPBox = v end)
@@ -430,9 +477,21 @@ CreateToggle("Air Walk", function(v) State.AirWalk = v end)
 CreateToggle("Fly Simple", function(v) State.Fly = v end)
 CreateToggle("Noclip", function(v) State.Noclip = v end)
 CreateToggle("Bebas Kamera", function(v) State.BypassCamera = v end)
-CreateToggle("Walkspeed (80)", function(v) State.Walkspeed = v end)
+
+CreateToggle("Walkspeed Toggle", function(v) State.WalkspeedToggle = v end)
+CreateTextBox("Input Speed Manual (Contoh: 50)", function(val)
+    local num = tonumber(val)
+    if num then
+        State.WalkspeedValue = num
+    end
+end)
+
+CreateTextBox("Cari Nama Player -> Enter TP", function(val)
+    TeleportToPlayerByName(val)
+end)
+
 CreateButton("TP Player Terjauh", function() TeleportFurthestPlayer() end)
 CreateButton("Rejoin Server", function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer) end)
 CreateButton("Hop Full Server", function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end)
 
-print("Zenith Ultralight v3.8 successfully loaded!")
+print("Zenith Ultralight v3.9 successfully loaded!")
