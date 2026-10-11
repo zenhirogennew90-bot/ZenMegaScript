@@ -181,7 +181,8 @@ end
 local function UpdateAirWalk()
     local root = GetRoot(LocalPlayer)
     if State.AirWalk and root then
-        if State.AirWalkHeight == 0 then
+        -- Jika tinggi 0 ATAU karakter melompat lebih tinggi dari platform, update ketinggian ke posisi saat ini
+        if State.AirWalkHeight == 0 or root.Position.Y > State.AirWalkHeight then
             State.AirWalkHeight = root.Position.Y - 3.1
         end
         AirWalkPlatform.CFrame = CFrame.new(root.Position.X, State.AirWalkHeight, root.Position.Z)
