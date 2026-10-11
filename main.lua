@@ -236,6 +236,32 @@ local function UpdateAttachFront()
     end
 end
 
+-- -------------------------------------------------------------------
+-- SEARCH PLAYER FUNCTIONALITY
+-- -------------------------------------------------------------------
+local function SearchAndSetTarget(searchText)
+    if not searchText or searchText == "" then
+        State.TargetPlayer = nil
+        return false, "Nama Kosong"
+    end
+    
+    local textLower = string.lower(searchText)
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            local nameMatch = string.find(string.lower(player.Name), textLower, 1, true)
+            local displayMatch = string.find(string.lower(player.DisplayName), textLower, 1, true)
+            
+            if nameMatch or displayMatch then
+                State.TargetPlayer = player
+                return true, player.DisplayName
+            end
+        end
+    end
+    
+    State.TargetPlayer = nil
+    return false, "Tidak Ditemukan"
+end
+
 local function TeleportToPlayer(target)
     local targetRoot = GetRoot(target)
     local myRoot = GetRoot(LocalPlayer)
@@ -449,6 +475,50 @@ CreateToggleBtn("Walkspeed (100)", function() return State.WalkspeedToggle end, 
     State.WalkspeedToggle = v
     State.WalkspeedValue = v and 100 or 16
 end)
+
+local SearchBoxFrame = Instance.new("Frame")
+SearchBoxFrame.Size = UDim2.new(1, -4, 0, 28)
+SearchBoxFrame.BackgroundColor3 = Color3.fromRGB(24, 24, 34)
+SearchBoxFrame.Parent = Scroll
+
+local SearchBoxCorner = Instance.new("UICorner")
+SearchBoxCorner.CornerRadius = UDim.new(0, 4)
+SearchBoxCorner.Parent = SearchBoxFrame
+
+local SearchBoxStroke = Instance.new("UIStroke")
+SearchBoxStroke.Color = Color3.fromRGB(60, 60, 90)
+SearchBoxStroke.Thickness = 1
+SearchBoxStroke.Parent = SearchBoxFrame
+
+local SearchTextBox = Instance.new("TextBox")
+SearchTextBox.Size = UDim2.new(1, -10, 1, 0)
+SearchTextBox.Position = UDim2.new(0, 5, 0, 0)
+SearchTextBox.BackgroundTransparency = 1
+SearchTextBox.Text = ""
+SearchTextBox.PlaceholderText = "Cari Player (Ketik Nama)..."
+SearchTextBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 150)
+SearchTextBox.TextColor3 = Color3.fromRGB(220, 220, 240)
+SearchTextBox.Font = Enum.Font.GothamSemibold
+SearchTextBox.TextSize = 10
+SearchTextBox.ClearTextOnFocus = false
+SearchTextBox.TextXAlignment = Enum.TextXAlignment.Left
+SearchTextBox.Parent = SearchBoxFrame
+
+SearchTextBox:GetPropertyChangedSignal("Text"):Connect(function()
+    local text = SearchTextBox.Text
+    if text ~= "" then
+        local found, _ = SearchAndSetTarget(text)
+        if found then
+            SearchBoxStroke.Color = Color3.fromRGB(130, 255, 170)
+        else
+            SearchBoxStroke.Color = Color3.fromRGB(255, 100, 100)
+        end
+    else
+        State.TargetPlayer = nil
+        SearchBoxStroke.Color = Color3.fromRGB(60, 60, 90)
+    end
+end
+
 CreateActionBtn("Teleport To Target", function()
     if State.TargetPlayer then TeleportToPlayer(State.TargetPlayer) end
 end)
@@ -465,3 +535,4 @@ end)
 
 print("Zenith Compact Elegant Panel loaded successfully.")
 
+    
