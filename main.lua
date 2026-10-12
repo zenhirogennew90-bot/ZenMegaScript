@@ -1,6 +1,6 @@
 -- ===================================================================
 -- ZENITH ELEGANT 1:1 - MINI HYBRID SCRIPT (FULL CODE)
--- Features: Visual, Action, Manual Walkspeed, Soft Sound & Purple Air Walk
+-- Features: Visual, Action, Manual Walkspeed, Soft Sound & Aligned Air Walk
 -- ===================================================================
 
 local Players = game:GetService("Players")
@@ -48,7 +48,7 @@ local ESPStorage = {}
 -- -------------------------------------------------------------------
 local function PlaySoftSound()
     local sound = Instance.new("Sound")
-    sound.SoundId = "rbxassetid://6895079853" -- Soft click sound
+    sound.SoundId = "rbxassetid://6895079853"
     sound.Volume = 0.3
     sound.Pitch = 1.2
     sound.Parent = SoundService
@@ -180,12 +180,12 @@ end
 -- ACTION FEATURES IMPLEMENTATION
 -- -------------------------------------------------------------------
 
--- Air Walk Engine (Kotak Persegi Ungu Transparan & Tebal Anti-Jatuh)
+-- Air Walk Engine (Turun sejajar dengan tanah / pemain lain)
 local AirWalkPlatform = Instance.new("Part")
-AirWalkPlatform.Size = Vector3.new(10, 2.5, 10) -- Tebal 2.5 studs agar tidak jatuh saat didorong/ditampar
+AirWalkPlatform.Size = Vector3.new(10, 2.5, 10)
 AirWalkPlatform.Anchored = true
-AirWalkPlatform.Transparency = 0.65 -- Transparan halus
-AirWalkPlatform.Color = Color3.fromRGB(150, 80, 255) -- Warna Ungu
+AirWalkPlatform.Transparency = 0.65
+AirWalkPlatform.Color = Color3.fromRGB(150, 80, 255)
 AirWalkPlatform.Material = Enum.Material.SmoothPlastic
 AirWalkPlatform.CanCollide = false
 AirWalkPlatform.Name = "ZenPurpleAirWalkPlatform"
@@ -193,7 +193,7 @@ AirWalkPlatform.Parent = workspace
 
 local PlatformSelection = Instance.new("SelectionBox")
 PlatformSelection.Color3 = Color3.fromRGB(180, 100, 255)
-PlatformSelection.LineThickness = 0.03 -- Garis tepi tipis
+PlatformSelection.LineThickness = 0.03
 PlatformSelection.Adornee = AirWalkPlatform
 PlatformSelection.Parent = AirWalkPlatform
 
@@ -201,14 +201,15 @@ local function UpdateAirWalk()
     local root = GetRoot(LocalPlayer)
     if State.AirWalk and root then
         if State.AirWalkHeight == 0 then
-            State.AirWalkHeight = root.Position.Y - 3.8
+            -- Diubah dari -3.8 menjadi -4.6 agar posisi blok turun sejajar tanah
+            State.AirWalkHeight = root.Position.Y - 4.6
         end
         AirWalkPlatform.CFrame = CFrame.new(root.Position.X, State.AirWalkHeight, root.Position.Z)
         AirWalkPlatform.CanCollide = true
     else
         AirWalkPlatform.CanCollide = false
         if root then
-            State.AirWalkHeight = root.Position.Y - 3.8
+            State.AirWalkHeight = root.Position.Y - 4.6
         end
     end
 end
