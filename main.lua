@@ -1,10 +1,12 @@
 -- ===================================================================
--- ZENITH • ULTRALIGHT v4.3 - GUARANTEED UI EDITION (LUAU)
+-- ZENITH ELEGANT 1:1 - MINI HYBRID SCRIPT (LUAU)
+-- Design: Modern, Compact, Smooth Animations & Soft Audio Feedback
 -- ===================================================================
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 local Lighting = game:GetService("Lighting")
 local TeleportService = game:GetService("TeleportService")
 local CoreGui = game:GetService("CoreGui")
@@ -13,396 +15,504 @@ local SoundService = game:GetService("SoundService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- State
+-- -------------------------------------------------------------------
+-- STATE MANAGEMENT
+-- -------------------------------------------------------------------
 local State = {
-    ESPBox = false, ESPLine = false, Fullbright = false, CameraXRay = false,
-    AirWalk = false, AirWalkHeight = 0, Fly = false, FlySpeed = 50,
-    Noclip = false, BypassCamera = false, WalkspeedToggle = false, WalkspeedValue = 16,
-    OrigAmbient = Lighting.Ambient, OrigOutAmbient = Lighting.OutdoorAmbient,
-    OrigBright = Lighting.Brightness, OrigClock = Lighting.ClockTime, OrigFog = Lighting.FogEnd
+    -- Visual Features
+    ESPBox = false,
+    ESPLine = false,
+    Fullbright = false,
+    CameraXRay = false,
+    
+    -- Action Features
+    AirWalk = false,
+    AirWalkHeight = 0,
+    Noclip = false,
+    BypassCamera = false,
+    WalkspeedToggle = false,
+    WalkspeedValue = 16,
+    
+    -- Lighting Backup
+    OriginalAmbient = Lighting.Ambient,
+    OriginalOutdoorAmbient = Lighting.OutdoorAmbient,
+    OriginalBrightness = Lighting.Brightness,
+    OriginalClockTime = Lighting.ClockTime,
+    OriginalFogEnd = Lighting.FogEnd
 }
 
 local ESPStorage = {}
 
-local function PlayClickSound()
-    pcall(function()
-        local s = Instance.new("Sound")
-        s.SoundId = "rbxassetid://9114220405"
-        s.Volume = 0.3
-        s.Parent = SoundService
-        s:Play()
-        s.Ended:Connect(function() s:Destroy() end)
+-- -------------------------------------------------------------------
+-- AUDIO SYSTEM (Calm & Soft Feedback)
+-- -------------------------------------------------------------------
+local function PlaySoftSound()
+    local sound = Instance.new("Sound")
+    sound.SoundId = "rbxassetid://6895079853" -- Soft click sound
+    sound.Volume = 0.3
+    sound.Pitch = 1.2
+    sound.Parent = SoundService
+    sound:Play()
+    sound.Ended:Connect(function()
+        sound:Destroy()
     end)
 end
 
-local function GetRoot(p)
-    local char = p and p.Character
-    return char and char:FindFirstChild("HumanoidRootPart")
+-- -------------------------------------------------------------------
+-- HELPER FUNCTIONS
+-- -------------------------------------------------------------------
+local function GetCharacter(player)
+    return player and player.Character or nil
 end
 
-local function GetHumanoid(p)
-    local char = p and p.Character
-    return char and char:FindFirstChildOfClass("Humanoid")
+local function GetRoot(player)
+    local char = GetCharacter(player)
+    return char and char:FindFirstChild("HumanoidRootPart") or nil
 end
 
--- Reset State on Spawn
-LocalPlayer.CharacterAdded:Connect(function(char)
-    char:WaitForChild("Humanoid")
-    task.wait(0.5)
-    State.AirWalkHeight = 0
-    State.Fly = false
-    local hum = GetHumanoid(LocalPlayer)
-    if hum and not State.WalkspeedToggle then hum.WalkSpeed = 16 end
-end)
+local function GetHumanoid(player)
+    local char = GetCharacter(player)
+    return char and char:FindFirstChildOfClass("Humanoid") or nil
+end
 
--- ESP & Visuals
-local function ClearESP(p)
-    if ESPStorage[p] then
-        for _, obj in pairs(ESPStorage[p]) do if obj and obj.Destroy then obj:Destroy() end end
-        ESPStorage[p] = nil
+-- -------------------------------------------------------------------
+-- VISUAL FEATURES IMPLEMENTATION
+-- -------------------------------------------------------------------
+local function ClearESP(player)
+    if ESPStorage[player] then
+        for _, obj in pairs(ESPStorage[player]) do
+            if obj and obj.Destroy then
+                obj:Destroy()
+            end
+        end
+        ESPStorage[player] = nil
     end
 end
 
-local function CreateESP(p)
-    if p == LocalPlayer then return end
-    ClearESP(p)
+local function CreateESP(player)
+    if player == LocalPlayer then return end
+    ClearESP(player)
+
     local box = Drawing.new("Square")
-    box.Thickness = 1.2; box.Filled = false; box.Color = Color3.fromRGB(120, 100, 255); box.Visible = false
+    box.Thickness = 1.2
+    box.Filled = false
+    box.Color = Color3.fromRGB(120, 140, 255)
+    box.Visible = false
+
     local line = Drawing.new("Line")
-    line.Thickness = 1; line.Color = Color3.fromRGB(120, 100, 255); line.Visible = false
-    ESPStorage[p] = {Box = box, Line = line}
+    line.Thickness = 1
+    line.Color = Color3.fromRGB(120, 140, 255)
+    line.Visible = false
+
+    ESPStorage[player] = {Box = box, Line = line}
 end
 
-for _, p in ipairs(Players:GetPlayers()) do CreateESP(p) end
-Players.PlayerAdded:Connect(CreateESP)
-Players.PlayerRemoving:Connect(ClearESP)
-
-RunService.RenderStepped:Connect(function()
-    for p, d in pairs(ESPStorage) do
-        local root = GetRoot(p)
-        local hum = GetHumanoid(p)
+local function UpdateESP()
+    for player, drawings in pairs(ESPStorage) do
+        local root = GetRoot(player)
+        local hum = GetHumanoid(player)
+        
         if root and hum and hum.Health > 0 then
             local pos, onScreen = Camera:WorldToViewportPoint(root.Position)
+            
             if onScreen then
-                local leg = Camera:WorldToViewportPoint(root.Position - Vector3.new(0, 3, 0))
-                local head = Camera:WorldToViewportPoint(root.Position + Vector3.new(0, 3.5, 0))
-                local h = math.abs(head.Y - leg.Y)
-                local w = h / 2.2
+                local head = GetCharacter(player):FindFirstChild("Head")
+                local headPos = head and Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0)) or pos
+                local legPos = Camera:WorldToViewportPoint(root.Position - Vector3.new(0, 3, 0))
+                
+                local height = math.abs(headPos.Y - legPos.Y)
+                local width = height / 2
+
                 if State.ESPBox then
-                    d.Box.Size = Vector2.new(w, h)
-                    d.Box.Position = Vector2.new(pos.X - w/2, pos.Y - h/2)
-                    d.Box.Visible = true
-                else d.Box.Visible = false end
+                    drawings.Box.Size = Vector2.new(width, height)
+                    drawings.Box.Position = Vector2.new(pos.X - width / 2, pos.Y - height / 2)
+                    drawings.Box.Visible = true
+                else
+                    drawings.Box.Visible = false
+                end
+
                 if State.ESPLine then
-                    d.Line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-                    d.Line.To = Vector2.new(pos.X, pos.Y)
-                    d.Line.Visible = true
-                else d.Line.Visible = false end
-            else d.Box.Visible = false; d.Line.Visible = false end
-        else d.Box.Visible = false; d.Line.Visible = false end
+                    drawings.Line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                    drawings.Line.To = Vector2.new(pos.X, pos.Y)
+                    drawings.Line.Visible = true
+                else
+                    drawings.Line.Visible = false
+                end
+            else
+                drawings.Box.Visible = false
+                drawings.Line.Visible = false
+            end
+        else
+            drawings.Box.Visible = false
+            drawings.Line.Visible = false
+        end
     end
+end
 
-    if State.Fullbright then
-        Lighting.Ambient = Color3.new(1,1,1)
-        Lighting.OutdoorAmbient = Color3.new(1,1,1)
-        Lighting.Brightness = 2; Lighting.ClockTime = 14; Lighting.FogEnd = 100000
+local function ToggleFullbright(value)
+    State.Fullbright = value
+    if value then
+        Lighting.Ambient = Color3.fromRGB(255, 255, 255)
+        Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+        Lighting.Brightness = 2
+        Lighting.ClockTime = 14
+        Lighting.FogEnd = 100000
     else
-        Lighting.Ambient = State.OrigAmbient
-        Lighting.OutdoorAmbient = State.OrigOutAmbient
-        Lighting.Brightness = State.OrigBright
-        Lighting.ClockTime = State.OrigClock
-        Lighting.FogEnd = State.OrigFog
+        Lighting.Ambient = State.OriginalAmbient
+        Lighting.OutdoorAmbient = State.OriginalOutdoorAmbient
+        Lighting.Brightness = State.OriginalBrightness
+        Lighting.ClockTime = State.OriginalClockTime
+        Lighting.FogEnd = State.OriginalFogEnd
     end
+end
 
+local function UpdateCameraSystem()
     if State.CameraXRay or State.BypassCamera then
         LocalPlayer.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode.Invisicam
-        LocalPlayer.CameraMaxZoomDistance = 500
+        LocalPlayer.CameraMinZoomDistance = 0.5
+        LocalPlayer.CameraMaxZoomDistance = 400
     else
         LocalPlayer.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode.Zoom
-        LocalPlayer.CameraMaxZoomDistance = 128
     end
+end
 
-    local hum = GetHumanoid(LocalPlayer)
-    if hum and State.WalkspeedToggle then hum.WalkSpeed = State.WalkspeedValue end
-end)
+-- -------------------------------------------------------------------
+-- ACTION FEATURES IMPLEMENTATION
+-- -------------------------------------------------------------------
+local AirWalkPlatform = Instance.new("Part")
+AirWalkPlatform.Size = Vector3.new(6, 0.8, 6)
+AirWalkPlatform.Anchored = true
+AirWalkPlatform.Transparency = 1
+AirWalkPlatform.CanCollide = false
+AirWalkPlatform.Name = "ZenAirWalkPlatform"
+AirWalkPlatform.Parent = workspace
 
--- Air Walk
-local AirPlatform = Instance.new("Part")
-AirPlatform.Size = Vector3.new(6, 0.8, 6)
-AirPlatform.Anchored = true
-AirPlatform.Transparency = 1
-AirPlatform.Parent = workspace
-
-RunService.RenderStepped:Connect(function()
+local function UpdateAirWalk()
     local root = GetRoot(LocalPlayer)
     if State.AirWalk and root then
-        if State.AirWalkHeight == 0 then State.AirWalkHeight = root.Position.Y - 3.2 end
-        AirPlatform.CFrame = CFrame.new(root.Position.X, State.AirWalkHeight, root.Position.Z)
-        AirPlatform.CanCollide = true
+        if State.AirWalkHeight == 0 then
+            State.AirWalkHeight = root.Position.Y - 3.2
+        end
+        AirWalkPlatform.CFrame = CFrame.new(root.Position.X, State.AirWalkHeight, root.Position.Z)
+        AirWalkPlatform.CanCollide = true
     else
-        AirPlatform.CanCollide = false
-        if root then State.AirWalkHeight = 0 end
-    end
-end)
-
--- Fly Engine
-local flyBV, flyBG = nil, nil
-local function ToggleFly(enabled)
-    local root = GetRoot(LocalPlayer)
-    local hum = GetHumanoid(LocalPlayer)
-    if enabled and root and hum then
-        hum.PlatformStand = true
-        if flyBV then flyBV:Destroy() end
-        if flyBG then flyBG:Destroy() end
-        flyBV = Instance.new("BodyVelocity", root)
-        flyBV.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-        flyBV.Velocity = Vector3.zero
-        flyBG = Instance.new("BodyGyro", root)
-        flyBG.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
-        flyBG.CFrame = root.CFrame
-    else
-        if flyBV then flyBV:Destroy(); flyBV = nil end
-        if flyBG then flyBG:Destroy(); flyBG = nil end
-        if hum then hum.PlatformStand = false end
+        AirWalkPlatform.CanCollide = false
+        if root then
+            State.AirWalkHeight = root.Position.Y - 3.2
+        end
     end
 end
 
-RunService.RenderStepped:Connect(function()
-    local root = GetRoot(LocalPlayer)
-    local hum = GetHumanoid(LocalPlayer)
-    if State.Fly and root and hum and flyBV and flyBG then
-        flyBG.CFrame = Camera.CFrame
-        local moveDir = hum.MoveDirection
-        local vel = Vector3.zero
-        if moveDir.Magnitude > 0.05 then
-            local look, right = Camera.CFrame.LookVector, Camera.CFrame.RightVector
-            vel = ((look * -moveDir.Z) + (right * moveDir.X)).Unit * State.FlySpeed
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.Space) or hum.Jump then
-            vel = vel + Vector3.new(0, State.FlySpeed * 0.8, 0)
-        end
-        flyBV.Velocity = vel
-    end
-end)
-
--- Noclip
 RunService.Stepped:Connect(function()
-    if State.Noclip then
-        local char = LocalPlayer.Character
-        if char then
-            for _, part in ipairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then part.CanCollide = false end
+    if State.Noclip and GetCharacter(LocalPlayer) then
+        for _, part in pairs(GetCharacter(LocalPlayer):GetDescendants()) do
+            if part:IsA("BasePart") and part.CanCollide then
+                part.CanCollide = false
             end
         end
     end
 end)
 
--- Teleport Helpers
-local function TPToPlayer(target)
-    local root = GetRoot(LocalPlayer)
-    local tRoot = GetRoot(target)
-    if root and tRoot then root.CFrame = tRoot.CFrame * CFrame.new(0, 3, 0) end
-end
+local function TeleportFarthestPlayer()
+    local myRoot = GetRoot(LocalPlayer)
+    if not myRoot then return end
 
-local function TPFurthest()
-    local root = GetRoot(LocalPlayer)
-    if not root then return end
-    local furthest, maxDist = nil, 0
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer then
-            local tRoot = GetRoot(p)
-            if tRoot then
-                local dist = (tRoot.Position - root.Position).Magnitude
-                if dist > maxDist then maxDist = dist; furthest = p end
+    local farthestPlayer = nil
+    local maxDistance = 0
+
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            local targetRoot = GetRoot(player)
+            if targetRoot then
+                local dist = (targetRoot.Position - myRoot.Position).Magnitude
+                if dist > maxDistance then
+                    maxDistance = dist
+                    farthestPlayer = player
+                end
             end
         end
     end
-    if furthest then TPToPlayer(furthest) end
+
+    if farthestPlayer and GetRoot(farthestPlayer) then
+        myRoot.CFrame = GetRoot(farthestPlayer).CFrame * CFrame.new(0, 2, 0)
+    end
 end
 
--- ===================================================================
--- UI IMPLEMENTATION (SAFE & GUARANTEED VISIBLE)
--- ===================================================================
+-- -------------------------------------------------------------------
+-- MAIN LOOP
+-- -------------------------------------------------------------------
+RunService.RenderStepped:Connect(function()
+    UpdateESP()
+    UpdateAirWalk()
+    UpdateCameraSystem()
+    
+    local hum = GetHumanoid(LocalPlayer)
+    if hum then
+        if State.WalkspeedToggle then
+            hum.WalkSpeed = State.WalkspeedValue
+        end
+    end
+end)
+
+for _, p in pairs(Players:GetPlayers()) do CreateESP(p) end
+Players.PlayerAdded:Connect(function(p) CreateESP(p) end)
+Players.PlayerRemoving:Connect(function(p) ClearESP(p) end)
+
+-- -------------------------------------------------------------------
+-- ELEGANT MINI UI (1:1 RATIO COMPACT FRAME)
+-- -------------------------------------------------------------------
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ZenithUI"
+ScreenGui.Name = "ZenithMiniUI"
 ScreenGui.ResetOnSpawn = false
 
--- Safe Parent Method for Mobile Executors
-local success = pcall(function()
-    if gethui then
-        ScreenGui.Parent = gethui()
-    else
-        ScreenGui.Parent = CoreGui
-    end
-end)
-
-if not success or not ScreenGui.Parent then
-    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+if gethui then
+    ScreenGui.Parent = gethui()
+elseif syn and syn.protect_gui then
+    syn.protect_gui(ScreenGui)
+    ScreenGui.Parent = CoreGui
+else
+    ScreenGui.Parent = CoreGui
 end
 
-local Main = Instance.new("Frame", ScreenGui)
-Main.Size = UDim2.new(0, 260, 0, 360)
-Main.Position = UDim2.new(0.5, -130, 0.5, -180)
-Main.BackgroundColor3 = Color3.fromRGB(14, 14, 20)
-Main.Active = true; Main.Draggable = true
+-- Main Box 1:1 Aspect Ratio (260x260 pixel)
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 260, 0, 260)
+MainFrame.Position = UDim2.new(0.5, -130, 0.5, -130)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 17, 22)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.ClipsDescendants = true
+MainFrame.Parent = ScreenGui
 
-Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
-local stroke = Instance.new("UIStroke", Main)
-stroke.Color = Color3.fromRGB(75, 65, 180); stroke.Thickness = 1.2
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 12)
+MainCorner.Parent = MainFrame
 
-local Title = Instance.new("TextLabel", Main)
-Title.Size = UDim2.new(1, -35, 0, 35); Title.Position = UDim2.new(0, 12, 0, 0)
-Title.Text = "ZENITH • ULTRALIGHT"; Title.TextColor3 = Color3.fromRGB(230, 230, 255)
-Title.TextSize = 12; Title.Font = Enum.Font.GothamBold; Title.BackgroundTransparency = 1
+local MainStroke = Instance.new("UIStroke")
+MainStroke.Color = Color3.fromRGB(45, 52, 70)
+MainStroke.Thickness = 1
+MainStroke.Parent = MainFrame
+
+-- Floating Toggle Button (When Closed)
+local FloatBtn = Instance.new("TextButton")
+FloatBtn.Name = "FloatButton"
+FloatBtn.Size = UDim2.new(0, 42, 0, 42)
+FloatBtn.Position = UDim2.new(0, 15, 0.4, 0)
+FloatBtn.BackgroundColor3 = Color3.fromRGB(20, 24, 33)
+FloatBtn.Text = "Z"
+FloatBtn.TextColor3 = Color3.fromRGB(120, 140, 255)
+FloatBtn.Font = Enum.Font.GothamBold
+FloatBtn.TextSize = 16
+FloatBtn.Visible = false
+FloatBtn.Active = true
+FloatBtn.Draggable = true
+FloatBtn.Parent = ScreenGui
+
+local FloatCorner = Instance.new("UICorner")
+FloatCorner.CornerRadius = UDim.new(1, 0)
+FloatCorner.Parent = FloatBtn
+
+local FloatStroke = Instance.new("UIStroke")
+FloatStroke.Color = Color3.fromRGB(60, 70, 95)
+FloatStroke.Thickness = 1.5
+FloatStroke.Parent = FloatBtn
+
+-- Header Bar
+local Header = Instance.new("Frame")
+Header.Size = UDim2.new(1, 0, 0, 36)
+Header.BackgroundTransparency = 1
+Header.Parent = MainFrame
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, -40, 1, 0)
+Title.Position = UDim2.new(0, 12, 0, 0)
+Title.Text = "ZENITH • MINI"
+Title.TextColor3 = Color3.fromRGB(220, 225, 240)
+Title.TextSize = 13
+Title.Font = Enum.Font.GothamBold
 Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.BackgroundTransparency = 1
+Title.Parent = Header
 
-local Close = Instance.new("TextButton", Main)
-Close.Size = UDim2.new(0, 22, 0, 22); Close.Position = UDim2.new(1, -28, 0, 6)
-Close.Text = "-"; Close.TextColor3 = Color3.fromRGB(180, 180, 220); Close.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-Close.Font = Enum.Font.GothamBold; Close.TextSize = 12
-Instance.new("UICorner", Close).CornerRadius = UDim.new(0, 4)
-Close.MouseButton1Click:Connect(function() PlayClickSound(); Main.Visible = not Main.Visible end)
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0, 24, 0, 24)
+CloseBtn.Position = UDim2.new(1, -30, 0, 6)
+CloseBtn.Text = "-"
+CloseBtn.TextColor3 = Color3.fromRGB(160, 165, 180)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(25, 28, 38)
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.TextSize = 14
+CloseBtn.Parent = Header
 
-local Scroll = Instance.new("ScrollingFrame", Main)
-Scroll.Size = UDim2.new(1, -12, 1, -42); Scroll.Position = UDim2.new(0, 6, 0, 38)
-Scroll.BackgroundTransparency = 1; Scroll.ScrollBarThickness = 2
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 6)
+CloseCorner.Parent = CloseBtn
 
-local Layout = Instance.new("UIListLayout", Scroll)
+-- Smooth Toggle Open / Close
+CloseBtn.MouseButton1Click:Connect(function()
+    PlaySoftSound()
+    MainFrame.Visible = false
+    FloatBtn.Visible = true
+end)
+
+FloatBtn.MouseButton1Click:Connect(function()
+    PlaySoftSound()
+    FloatBtn.Visible = false
+    MainFrame.Visible = true
+end)
+
+-- Scrolling Container
+local Scroll = Instance.new("ScrollingFrame")
+Scroll.Size = UDim2.new(1, -16, 1, -42)
+Scroll.Position = UDim2.new(0, 8, 0, 38)
+Scroll.BackgroundTransparency = 1
+Scroll.ScrollBarThickness = 2
+Scroll.ScrollBarImageColor3 = Color3.fromRGB(60, 70, 95)
+Scroll.Parent = MainFrame
+
+local Layout = Instance.new("UIListLayout")
 Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-Layout.SortOrder = Enum.SortOrder.LayoutOrder; Layout.Padding = UDim.new(0, 5)
+Layout.SortOrder = Enum.SortOrder.LayoutOrder
+Layout.Padding = UDim.new(0, 5)
+Layout.Parent = Scroll
 
 Layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     Scroll.CanvasSize = UDim2.new(0, 0, 0, Layout.AbsoluteContentSize.Y + 10)
 end)
 
-local function AddHeader(txt)
-    local l = Instance.new("TextLabel", Scroll)
-    l.Size = UDim2.new(1, -6, 0, 20); l.Text = " " .. txt
-    l.TextColor3 = Color3.fromRGB(130, 130, 170); l.TextSize = 10; l.Font = Enum.Font.GothamBold
-    l.BackgroundTransparency = 1; l.TextXAlignment = Enum.TextXAlignment.Left
+-- UI Generator Helpers
+local function AddCategory(name)
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -6, 0, 20)
+    label.Text = name
+    label.TextColor3 = Color3.fromRGB(90, 105, 140)
+    label.TextSize = 10
+    label.Font = Enum.Font.GothamBold
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.BackgroundTransparency = 1
+    label.Parent = Scroll
 end
 
-local function AddToggle(txt, cb)
-    local b = Instance.new("TextButton", Scroll)
-    b.Size = UDim2.new(1, -6, 0, 28); b.BackgroundColor3 = Color3.fromRGB(22, 22, 32)
-    b.Font = Enum.Font.GothamSemibold; b.TextSize = 11
-    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 5)
-    local val = false
-    local function upd()
-        b.Text = txt .. " : " .. (val and "ON" or "OFF")
-        b.TextColor3 = val and Color3.fromRGB(100, 255, 150) or Color3.fromRGB(180, 180, 180)
+local function AddToggle(text, defaultState, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -6, 0, 28)
+    btn.BackgroundColor3 = Color3.fromRGB(22, 25, 34)
+    btn.Font = Enum.Font.GothamMedium
+    btn.TextSize = 11
+    btn.Parent = Scroll
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+
+    local currentState = defaultState
+    local function Render()
+        btn.Text = text .. " -> " .. (currentState and "ON" or "OFF")
+        btn.TextColor3 = currentState and Color3.fromRGB(120, 220, 160) or Color3.fromRGB(160, 165, 180)
     end
-    upd()
-    b.MouseButton1Click:Connect(function()
-        PlayClickSound(); val = not val; upd(); pcall(cb, val)
+    Render()
+
+    btn.MouseButton1Click:Connect(function()
+        PlaySoftSound()
+        currentState = not currentState
+        Render()
+        TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = currentState and Color3.fromRGB(28, 35, 48) or Color3.fromRGB(22, 25, 34)}):Play()
+        pcall(callback, currentState)
     end)
 end
 
-local function AddButton(txt, cb)
-    local b = Instance.new("TextButton", Scroll)
-    b.Size = UDim2.new(1, -6, 0, 28); b.BackgroundColor3 = Color3.fromRGB(30, 30, 44)
-    b.Text = txt; b.TextColor3 = Color3.fromRGB(220, 220, 240); b.Font = Enum.Font.GothamSemibold; b.TextSize = 11
-    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 5)
-    b.MouseButton1Click:Connect(function() PlayClickSound(); pcall(cb) end)
-end
+local function AddButton(text, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -6, 0, 28)
+    btn.BackgroundColor3 = Color3.fromRGB(28, 32, 44)
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(200, 205, 220)
+    btn.Font = Enum.Font.GothamMedium
+    btn.TextSize = 11
+    btn.Parent = Scroll
 
-local function AddTextBox(ph, cb)
-    local bx = Instance.new("TextBox", Scroll)
-    bx.Size = UDim2.new(1, -6, 0, 28); bx.BackgroundColor3 = Color3.fromRGB(18, 18, 26)
-    bx.PlaceholderText = ph; bx.Text = ""; bx.TextColor3 = Color3.fromRGB(240, 240, 240)
-    bx.PlaceholderColor3 = Color3.fromRGB(120, 120, 150); bx.Font = Enum.Font.GothamSemibold; bx.TextSize = 11
-    Instance.new("UICorner", bx).CornerRadius = UDim.new(0, 5)
-    bx.FocusLost:Connect(function(enter)
-        if enter then PlayClickSound(); pcall(cb, bx.Text) end
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+
+    btn.MouseButton1Click:Connect(function()
+        PlaySoftSound()
+        TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(40, 48, 65)}):Play()
+        task.delay(0.1, function()
+            TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(28, 32, 44)}):Play()
+        end)
+        pcall(callback)
     end)
 end
 
--- Selector Widget (< Name >)
-local function AddSelector()
-    local f = Instance.new("Frame", Scroll)
-    f.Size = UDim2.new(1, -6, 0, 30); f.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-    Instance.new("UICorner", f).CornerRadius = UDim.new(0, 5)
+-- Walkspeed Manual Adjustment Input
+local function AddWalkspeedBox()
+    local container = Instance.new("Frame")
+    container.Size = UDim2.new(1, -6, 0, 32)
+    container.BackgroundColor3 = Color3.fromRGB(22, 25, 34)
+    container.Parent = Scroll
 
-    local lb = Instance.new("TextButton", f)
-    lb.Size = UDim2.new(0, 30, 1, 0); lb.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
-    lb.Text = "<"; lb.TextColor3 = Color3.fromRGB(255, 255, 255)
-    lb.Font = Enum.Font.GothamBold; lb.TextSize = 12
-    Instance.new("UICorner", lb).CornerRadius = UDim.new(0, 5)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = container
 
-    local nb = Instance.new("TextButton", f)
-    nb.Size = UDim2.new(1, -64, 1, 0); nb.Position = UDim2.new(0, 32, 0, 0)
-    nb.BackgroundColor3 = Color3.fromRGB(25, 25, 38); nb.Text = "Pilih Player (TP)"
-    nb.TextColor3 = Color3.fromRGB(100, 220, 255); nb.Font = Enum.Font.GothamSemibold; nb.TextSize = 11
-    Instance.new("UICorner", nb).CornerRadius = UDim.new(0, 5)
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0.55, 0, 1, 0)
+    label.Position = UDim2.new(0, 8, 0, 0)
+    label.Text = "Walkspeed ->"
+    label.TextColor3 = Color3.fromRGB(160, 165, 180)
+    label.TextSize = 11
+    label.Font = Enum.Font.GothamMedium
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.BackgroundTransparency = 1
+    label.Parent = container
 
-    local rb = Instance.new("TextButton", f)
-    rb.Size = UDim2.new(0, 30, 1, 0); rb.Position = UDim2.new(1, -30, 0, 0)
-    rb.BackgroundColor3 = Color3.fromRGB(35, 35, 50); rb.Text = ">"
-    rb.TextColor3 = Color3.fromRGB(255, 255, 255); rb.Font = Enum.Font.GothamBold; rb.TextSize = 12
-    Instance.new("UICorner", rb).CornerRadius = UDim.new(0, 5)
+    local input = Instance.new("TextBox")
+    input.Size = UDim2.new(0.38, -6, 0.7, 0)
+    input.Position = UDim2.new(0.6, 0, 0.15, 0)
+    input.BackgroundColor3 = Color3.fromRGB(15, 17, 22)
+    input.Text = tostring(State.WalkspeedValue)
+    input.TextColor3 = Color3.fromRGB(120, 140, 255)
+    input.Font = Enum.Font.GothamBold
+    input.TextSize = 11
+    input.ClearTextOnFocus = false
+    input.Parent = container
 
-    local idx = 1
-    local function getList()
-        local t = {}
-        for _, p in ipairs(Players:GetPlayers()) do if p ~= LocalPlayer then table.insert(t, p) end end
-        return t
-    end
+    local inputCorner = Instance.new("UICorner")
+    inputCorner.CornerRadius = UDim.new(0, 4)
+    inputCorner.Parent = input
 
-    local function update()
-        local list = getList()
-        if #list == 0 then nb.Text = "Tidak ada player"; return end
-        if idx > #list then idx = 1 end
-        if idx < 1 then idx = #list end
-        nb.Text = list[idx].DisplayName or list[idx].Name
-    end
-
-    lb.MouseButton1Click:Connect(function() PlayClickSound(); idx -= 1; update() end)
-    rb.MouseButton1Click:Connect(function() PlayClickSound(); idx += 1; update() end)
-    nb.MouseButton1Click:Connect(function()
-        PlayClickSound()
-        local list = getList()
-        if #list > 0 then
-            if idx > #list then idx = 1 end
-            TPToPlayer(list[idx])
+    input.FocusLost:Connect(function(enterPressed)
+        local num = tonumber(input.Text)
+        if num then
+            State.WalkspeedValue = num
+            State.WalkspeedToggle = true
+            PlaySoftSound()
+        else
+            input.Text = tostring(State.WalkspeedValue)
         end
     end)
-
-    task.spawn(function()
-        while task.wait(1) do pcall(update) end
-    end)
 end
 
--- Build Menu UI Elements
-AddHeader("FITUR VISUAL")
-AddToggle("ESP Box", function(v) State.ESPBox = v end)
-AddToggle("ESP Line", function(v) State.ESPLine = v end)
-AddToggle("Fullbright", function(v) State.Fullbright = v end)
-AddToggle("Camera X-Ray", function(v) State.CameraXRay = v end)
+-- -------------------------------------------------------------------
+-- BUILD UI ITEMS
+-- -------------------------------------------------------------------
 
-AddHeader("FITUR AKSI")
-AddToggle("Air Walk", function(v) State.AirWalk = v end)
-AddToggle("Fly Simple", function(v) State.Fly = v; ToggleFly(v) end)
-AddToggle("Noclip", function(v) State.Noclip = v end)
-AddToggle("Bebas Kamera", function(v) State.BypassCamera = v end)
+AddCategory("FITUR VISUAL")
+AddToggle("ESP Box", State.ESPBox, function(v) State.ESPBox = v end)
+AddToggle("ESP Line", State.ESPLine, function(v) State.ESPLine = v end)
+AddToggle("Fullbright (Cerahkan)", State.Fullbright, function(v) ToggleFullbright(v) end)
+AddToggle("Camera X-Ray", State.CameraXRay, function(v) State.CameraXRay = v end)
 
-AddToggle("Walkspeed Toggle", function(v)
-    State.WalkspeedToggle = v
-    if not v then
-        local h = GetHumanoid(LocalPlayer)
-        if h then h.WalkSpeed = 16 end
-    end
-end)
-
-AddTextBox("Input Speed Manual (Contoh: 50)", function(val)
-    local n = tonumber(val)
-    if n then State.WalkspeedValue = n end
-end)
-
-AddHeader("PLAYER SELECTOR (TP)")
-AddSelector()
-
-AddButton("TP Player Terjauh", TPFurthest)
+AddCategory("FITUR AKSI")
+AddToggle("Air Walk", State.AirWalk, function(v) State.AirWalk = v end)
+AddToggle("Noclip (Tembus Wall)", State.Noclip, function(v) State.Noclip = v end)
+AddToggle("Bebas Kamera (Bypass)", State.BypassCamera, function(v) State.BypassCamera = v end)
+AddWalkspeedBox()
+AddButton("TP Player Terjauh", function() TeleportFarthestPlayer() end)
 AddButton("Rejoin Server", function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer) end)
 AddButton("Hop Full Server", function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end)
 
-print("Zenith Ultralight v4.3 loaded successfully!")
+print("Zenith Mini UI Loaded Successfully!")
