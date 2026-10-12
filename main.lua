@@ -1,6 +1,6 @@
 -- ===================================================================
 -- ZENITH ELEGANT 1:1 - MINI HYBRID SCRIPT (FULL CODE)
--- Features: Visual, Action, Manual Walkspeed, Soft Sound & Aligned Air Walk
+-- Features: Visual, Action, Manual Walkspeed, Soft Sound & Smart Air Walk
 -- ===================================================================
 
 local Players = game:GetService("Players")
@@ -27,7 +27,6 @@ local State = {
     
     -- Action Features
     AirWalk = false,
-    AirWalkHeight = 0,
     Noclip = false,
     BypassCamera = false,
     WalkspeedToggle = false,
@@ -180,15 +179,15 @@ end
 -- ACTION FEATURES IMPLEMENTATION
 -- -------------------------------------------------------------------
 
--- Air Walk Engine (Turun sejajar dengan tanah / pemain lain)
+-- Smart Air Walk Engine (Otomatis menyesuaikan tanah & tidak mencurigakan)
 local AirWalkPlatform = Instance.new("Part")
-AirWalkPlatform.Size = Vector3.new(10, 2.5, 10)
+AirWalkPlatform.Size = Vector3.new(6, 0.4, 6) -- Tipis dan pas di bawah kaki
 AirWalkPlatform.Anchored = true
-AirWalkPlatform.Transparency = 0.65
+AirWalkPlatform.Transparency = 1
 AirWalkPlatform.Color = Color3.fromRGB(150, 80, 255)
 AirWalkPlatform.Material = Enum.Material.SmoothPlastic
 AirWalkPlatform.CanCollide = false
-AirWalkPlatform.Name = "ZenPurpleAirWalkPlatform"
+AirWalkPlatform.Name = "ZenSmartAirWalk"
 AirWalkPlatform.Parent = workspace
 
 local PlatformSelection = Instance.new("SelectionBox")
@@ -197,20 +196,30 @@ PlatformSelection.LineThickness = 0.03
 PlatformSelection.Adornee = AirWalkPlatform
 PlatformSelection.Parent = AirWalkPlatform
 
+local raycastParams = RaycastParams.new()
+raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+
 local function UpdateAirWalk()
+    local char = GetCharacter(LocalPlayer)
     local root = GetRoot(LocalPlayer)
-    if State.AirWalk and root then
-        if State.AirWalkHeight == 0 then
-            -- Diubah dari -3.8 menjadi -4.6 agar posisi blok turun sejajar tanah
-            State.AirWalkHeight = root.Position.Y - 4.6
+    if State.AirWalk and char and root then
+        raycastParams.FilterDescendantsInstances = {char, AirWalkPlatform}
+        -- Deteksi jarak ke lantai asli di bawah pemain
+        local raycastResult = workspace:Raycast(root.Position, Vector3.new(0, -10, 0), raycastParams)
+        
+        if raycastResult and raycastResult.Distance <= 3.6 then
+            -- Jika dekat dengan lantai asli, nonaktifkan kolaborasi platform agar berjalan normal di tanah
+            AirWalkPlatform.CanCollide = false
+            AirWalkPlatform.Transparency = 1
+        else
+            -- Jika di udara / melompat / di atas jurang, aktifkan platform tepat di bawah kaki
+            AirWalkPlatform.CFrame = CFrame.new(root.Position.X, root.Position.Y - 3.5, root.Position.Z)
+            AirWalkPlatform.CanCollide = true
+            AirWalkPlatform.Transparency = 0.5
         end
-        AirWalkPlatform.CFrame = CFrame.new(root.Position.X, State.AirWalkHeight, root.Position.Z)
-        AirWalkPlatform.CanCollide = true
     else
         AirWalkPlatform.CanCollide = false
-        if root then
-            State.AirWalkHeight = root.Position.Y - 4.6
-        end
+        AirWalkPlatform.Transparency = 1
     end
 end
 
