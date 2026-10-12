@@ -1,6 +1,6 @@
 -- ===================================================================
--- ZENITH ELEGANT 1:1 - MINI HYBRID SCRIPT (FULL CODE)
--- Features: Visual, Action, Manual Walkspeed, Soft Sound & Smart Air Walk
+-- ZENITH ELEGANT 1:1 - MINI HYBRID SCRIPT (FULL CODE FIXED)
+-- Features: Visual, Action, Manual Walkspeed, Soft Sound & Fixed Air Walk
 -- ===================================================================
 
 local Players = game:GetService("Players")
@@ -179,15 +179,15 @@ end
 -- ACTION FEATURES IMPLEMENTATION
 -- -------------------------------------------------------------------
 
--- Smart Air Walk Engine (Otomatis menyesuaikan tanah & tidak mencurigakan)
+-- Fixed Air Walk Engine (Position Locked & Anti-Flying)
 local AirWalkPlatform = Instance.new("Part")
-AirWalkPlatform.Size = Vector3.new(6, 0.4, 6) -- Tipis dan pas di bawah kaki
+AirWalkPlatform.Size = Vector3.new(8, 0.4, 8)
 AirWalkPlatform.Anchored = true
 AirWalkPlatform.Transparency = 1
 AirWalkPlatform.Color = Color3.fromRGB(150, 80, 255)
 AirWalkPlatform.Material = Enum.Material.SmoothPlastic
 AirWalkPlatform.CanCollide = false
-AirWalkPlatform.Name = "ZenSmartAirWalk"
+AirWalkPlatform.Name = "ZenFixedAirWalk"
 AirWalkPlatform.Parent = workspace
 
 local PlatformSelection = Instance.new("SelectionBox")
@@ -196,28 +196,22 @@ PlatformSelection.LineThickness = 0.03
 PlatformSelection.Adornee = AirWalkPlatform
 PlatformSelection.Parent = AirWalkPlatform
 
-local raycastParams = RaycastParams.new()
-raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+local lockedY = nil
 
 local function UpdateAirWalk()
     local char = GetCharacter(LocalPlayer)
     local root = GetRoot(LocalPlayer)
+    
     if State.AirWalk and char and root then
-        raycastParams.FilterDescendantsInstances = {char, AirWalkPlatform}
-        -- Deteksi jarak ke lantai asli di bawah pemain
-        local raycastResult = workspace:Raycast(root.Position, Vector3.new(0, -10, 0), raycastParams)
-        
-        if raycastResult and raycastResult.Distance <= 3.6 then
-            -- Jika dekat dengan lantai asli, nonaktifkan kolaborasi platform agar berjalan normal di tanah
-            AirWalkPlatform.CanCollide = false
-            AirWalkPlatform.Transparency = 1
-        else
-            -- Jika di udara / melompat / di atas jurang, aktifkan platform tepat di bawah kaki
-            AirWalkPlatform.CFrame = CFrame.new(root.Position.X, root.Position.Y - 3.5, root.Position.Z)
-            AirWalkPlatform.CanCollide = true
-            AirWalkPlatform.Transparency = 0.5
+        if not lockedY then
+            lockedY = root.Position.Y - 3.15
         end
+
+        AirWalkPlatform.CFrame = CFrame.new(root.Position.X, lockedY, root.Position.Z)
+        AirWalkPlatform.CanCollide = true
+        AirWalkPlatform.Transparency = 0.5
     else
+        lockedY = nil
         AirWalkPlatform.CanCollide = false
         AirWalkPlatform.Transparency = 1
     end
