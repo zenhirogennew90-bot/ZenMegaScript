@@ -1,6 +1,6 @@
 -- ===================================================================
--- ZENITH ELEGANT 1:1 - MINI HYBRID SCRIPT (LUAU)
--- Design: Modern, Compact, Smooth Animations & Soft Audio Feedback
+-- ZENITH ELEGANT 1:1 - MINI HYBRID SCRIPT (FULL CODE)
+-- Features: Visual, Action, Manual Walkspeed, Soft Sound & Purple Air Walk
 -- ===================================================================
 
 local Players = game:GetService("Players")
@@ -179,26 +179,36 @@ end
 -- -------------------------------------------------------------------
 -- ACTION FEATURES IMPLEMENTATION
 -- -------------------------------------------------------------------
+
+-- Air Walk Engine (Kotak Persegi Ungu Transparan & Tebal Anti-Jatuh)
 local AirWalkPlatform = Instance.new("Part")
-AirWalkPlatform.Size = Vector3.new(6, 0.8, 6)
+AirWalkPlatform.Size = Vector3.new(10, 2.5, 10) -- Tebal 2.5 studs agar tidak jatuh saat didorong/ditampar
 AirWalkPlatform.Anchored = true
-AirWalkPlatform.Transparency = 1
+AirWalkPlatform.Transparency = 0.65 -- Transparan halus
+AirWalkPlatform.Color = Color3.fromRGB(150, 80, 255) -- Warna Ungu
+AirWalkPlatform.Material = Enum.Material.SmoothPlastic
 AirWalkPlatform.CanCollide = false
-AirWalkPlatform.Name = "ZenAirWalkPlatform"
+AirWalkPlatform.Name = "ZenPurpleAirWalkPlatform"
 AirWalkPlatform.Parent = workspace
+
+local PlatformSelection = Instance.new("SelectionBox")
+PlatformSelection.Color3 = Color3.fromRGB(180, 100, 255)
+PlatformSelection.LineThickness = 0.03 -- Garis tepi tipis
+PlatformSelection.Adornee = AirWalkPlatform
+PlatformSelection.Parent = AirWalkPlatform
 
 local function UpdateAirWalk()
     local root = GetRoot(LocalPlayer)
     if State.AirWalk and root then
         if State.AirWalkHeight == 0 then
-            State.AirWalkHeight = root.Position.Y - 3.2
+            State.AirWalkHeight = root.Position.Y - 3.8
         end
         AirWalkPlatform.CFrame = CFrame.new(root.Position.X, State.AirWalkHeight, root.Position.Z)
         AirWalkPlatform.CanCollide = true
     else
         AirWalkPlatform.CanCollide = false
         if root then
-            State.AirWalkHeight = root.Position.Y - 3.2
+            State.AirWalkHeight = root.Position.Y - 3.8
         end
     end
 end
@@ -295,7 +305,7 @@ MainStroke.Color = Color3.fromRGB(45, 52, 70)
 MainStroke.Thickness = 1
 MainStroke.Parent = MainFrame
 
--- Floating Toggle Button (When Closed)
+-- Floating Toggle Button
 local FloatBtn = Instance.new("TextButton")
 FloatBtn.Name = "FloatButton"
 FloatBtn.Size = UDim2.new(0, 42, 0, 42)
@@ -350,7 +360,6 @@ local CloseCorner = Instance.new("UICorner")
 CloseCorner.CornerRadius = UDim.new(0, 6)
 CloseCorner.Parent = CloseBtn
 
--- Smooth Toggle Open / Close
 CloseBtn.MouseButton1Click:Connect(function()
     PlaySoftSound()
     MainFrame.Visible = false
@@ -382,7 +391,7 @@ Layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     Scroll.CanvasSize = UDim2.new(0, 0, 0, Layout.AbsoluteContentSize.Y + 10)
 end)
 
--- UI Generator Helpers
+-- UI Helpers
 local function AddCategory(name)
     local label = Instance.new("TextLabel")
     label.Size = UDim2.new(1, -6, 0, 20)
@@ -447,7 +456,6 @@ local function AddButton(text, callback)
     end)
 end
 
--- Walkspeed Manual Adjustment Input
 local function AddWalkspeedBox()
     local container = Instance.new("Frame")
     container.Size = UDim2.new(1, -6, 0, 32)
