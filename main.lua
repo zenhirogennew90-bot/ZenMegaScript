@@ -1,6 +1,6 @@
 -- ===================================================================
--- ZENITH ELEGANT 1:1 - MINI HYBRID SCRIPT (FIXED AIR WALK & NOCLIP)
--- Features: Visual, Stable Air Walk + Noclip Combo, Simple Speed Controller
+-- ZENITH ELEGANT 1:1 - MINI HYBRID SCRIPT (REVERTED AIR WALK & NOCLIP)
+-- Features: Visual, Original Air Walk + Noclip, Simple Speed Controller
 -- ===================================================================
 
 local Players = game:GetService("Players")
@@ -26,7 +26,7 @@ local State = {
     CameraXRay = false,
     
     -- Action Features
-    AirWalkNoclip = false, -- Combo Air Walk & Noclip (Anti-Fall Through)
+    AirWalkNoclip = false, -- Original Air Walk & Noclip Combo
     BypassCamera = false,
     WalkspeedToggle = false,
     WalkspeedValue = 16,
@@ -175,7 +175,7 @@ local function UpdateCameraSystem()
 end
 
 -- -------------------------------------------------------------------
--- ACTION FEATURES IMPLEMENTATION (Stable Air Walk + Noclip Combo)
+-- ACTION FEATURES IMPLEMENTATION (Original Air Walk + Noclip Combo)
 -- -------------------------------------------------------------------
 local AirWalkPlatform = Instance.new("Part")
 AirWalkPlatform.Size = Vector3.new(8, 0.4, 8)
@@ -184,33 +184,32 @@ AirWalkPlatform.Transparency = 1
 AirWalkPlatform.Color = Color3.fromRGB(150, 80, 255)
 AirWalkPlatform.Material = Enum.Material.SmoothPlastic
 AirWalkPlatform.CanCollide = false
-AirWalkPlatform.Name = "ZenAirWalkNoclipStable"
+AirWalkPlatform.Name = "ZenAirWalkNoclip"
 AirWalkPlatform.Parent = workspace
+
+local lockedY = nil
 
 local function UpdateAirWalkNoclip()
     local char = GetCharacter(LocalPlayer)
     local root = GetRoot(LocalPlayer)
     
     if State.AirWalkNoclip and char and root then
-        -- Dynamic tracking: platform stays right under the player's current height
-        local targetY = root.Position.Y - 3.15
-        AirWalkPlatform.CFrame = CFrame.new(root.Position.X, targetY, root.Position.Z)
-        AirWalkPlatform.CanCollide = true
-        AirWalkPlatform.Transparency = 0.4
-
-        -- Anti-Fall Through & Anti-Knockback: Neutralize downward velocity when hit or falling
-        local vel = root.AssemblyLinearVelocity
-        if vel.Y < 0 then
-            root.AssemblyLinearVelocity = Vector3.new(vel.X, 0, vel.Z)
+        if not lockedY then
+            lockedY = root.Position.Y - 3.15
         end
 
-        -- Noclip integration: disable collision for character parts except platform
+        AirWalkPlatform.CFrame = CFrame.new(root.Position.X, lockedY, root.Position.Z)
+        AirWalkPlatform.CanCollide = true
+        AirWalkPlatform.Transparency = 0.5
+
+        -- Noclip integration: disable collision for character parts
         for _, part in pairs(char:GetDescendants()) do
             if part:IsA("BasePart") and part ~= AirWalkPlatform and part.CanCollide then
                 part.CanCollide = false
             end
         end
     else
+        lockedY = nil
         AirWalkPlatform.CanCollide = false
         AirWalkPlatform.Transparency = 1
     end
@@ -394,154 +393,4 @@ local function AddCategory(name)
     label.Font = Enum.Font.GothamBold
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.BackgroundTransparency = 1
-    label.Parent = Scroll
-end
-
-local function AddToggle(text, defaultState, callback)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -6, 0, 28)
-    btn.BackgroundColor3 = Color3.fromRGB(22, 25, 34)
-    btn.Font = Enum.Font.GothamMedium
-    btn.TextSize = 11
-    btn.Parent = Scroll
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 6)
-    corner.Parent = btn
-
-    local currentState = defaultState
-    local function Render()
-        btn.Text = text .. " -> " .. (currentState and "ON" or "OFF")
-        btn.TextColor3 = currentState and Color3.fromRGB(120, 220, 160) or Color3.fromRGB(160, 165, 180)
-    end
-    Render()
-
-    btn.MouseButton1Click:Connect(function()
-        PlaySoftSound()
-        currentState = not currentState
-        Render()
-        TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = currentState and Color3.fromRGB(28, 35, 48) or Color3.fromRGB(22, 25, 34)}):Play()
-        pcall(callback, currentState)
-    end)
-end
-
-local function AddButton(text, callback)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -6, 0, 28)
-    btn.BackgroundColor3 = Color3.fromRGB(28, 32, 44)
-    btn.Text = text
-    btn.TextColor3 = Color3.fromRGB(200, 205, 220)
-    btn.Font = Enum.Font.GothamMedium
-    btn.TextSize = 11
-    btn.Parent = Scroll
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 6)
-    corner.Parent = btn
-
-    btn.MouseButton1Click:Connect(function()
-        PlaySoftSound()
-        TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(40, 48, 65)}):Play()
-        task.delay(0.1, function()
-            TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(28, 32, 44)}):Play()
-        end)
-        pcall(callback)
-    end)
-end
-
--- Simple Quick Walkspeed Control (+/- and Toggle)
-local function AddWalkspeedControl()
-    local container = Instance.new("Frame")
-    container.Size = UDim2.new(1, -6, 0, 32)
-    container.BackgroundColor3 = Color3.fromRGB(22, 25, 34)
-    container.Parent = Scroll
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 6)
-    corner.Parent = container
-
-    local label = Instance.new("TextButton")
-    label.Size = UDim2.new(0.55, 0, 1, 0)
-    label.Position = UDim2.new(0, 8, 0, 0)
-    label.BackgroundTransparency = 1
-    label.Text = "Speed: 16"
-    label.TextColor3 = Color3.fromRGB(160, 165, 180)
-    label.TextSize = 11
-    label.Font = Enum.Font.GothamMedium
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = container
-
-    local minusBtn = Instance.new("TextButton")
-    minusBtn.Size = UDim2.new(0, 26, 0, 22)
-    minusBtn.Position = UDim2.new(0.58, 0, 0.15, 0)
-    minusBtn.BackgroundColor3 = Color3.fromRGB(28, 32, 44)
-    minusBtn.Text = "-"
-    minusBtn.TextColor3 = Color3.fromRGB(200, 205, 220)
-    minusBtn.Font = Enum.Font.GothamBold
-    minusBtn.TextSize = 12
-    minusBtn.Parent = container
-
-    local mCorner = Instance.new("UICorner")
-    mCorner.CornerRadius = UDim.new(0, 4)
-    mCorner.Parent = minusBtn
-
-    local plusBtn = Instance.new("TextButton")
-    plusBtn.Size = UDim2.new(0, 26, 0, 22)
-    plusBtn.Position = UDim2.new(0.78, 0, 0.15, 0)
-    plusBtn.BackgroundColor3 = Color3.fromRGB(28, 32, 44)
-    plusBtn.Text = "+"
-    plusBtn.TextColor3 = Color3.fromRGB(200, 205, 220)
-    plusBtn.Font = Enum.Font.GothamBold
-    plusBtn.TextSize = 12
-    plusBtn.Parent = container
-
-    local pCorner = Instance.new("UICorner")
-    pCorner.CornerRadius = UDim.new(0, 4)
-    pCorner.Parent = plusBtn
-
-    local function UpdateDisplay()
-        label.Text = "Speed: " .. State.WalkspeedValue .. " (" .. (State.WalkspeedToggle and "ON" or "OFF") .. ")"
-        label.TextColor3 = State.WalkspeedToggle and Color3.fromRGB(120, 220, 160) or Color3.fromRGB(160, 165, 180)
-    end
-
-    label.MouseButton1Click:Connect(function()
-        PlaySoftSound()
-        State.WalkspeedToggle = not State.WalkspeedToggle
-        UpdateDisplay()
-    end)
-
-    minusBtn.MouseButton1Click:Connect(function()
-        PlaySoftSound()
-        State.WalkspeedValue = math.max(16, State.WalkspeedValue - 8)
-        State.WalkspeedToggle = true
-        UpdateDisplay()
-    end)
-
-    plusBtn.MouseButton1Click:Connect(function()
-        PlaySoftSound()
-        State.WalkspeedValue = math.min(250, State.WalkspeedValue + 8)
-        State.WalkspeedToggle = true
-        UpdateDisplay()
-    end)
-
-    UpdateDisplay()
-end
-
--- -------------------------------------------------------------------
--- BUILD UI ITEMS
--- -------------------------------------------------------------------
-
-AddCategory("FITUR VISUAL")
-AddToggle("ESP Box", State.ESPBox, function(v) State.ESPBox = v end)
-AddToggle("ESP Line", State.ESPLine, function(v) State.ESPLine = v end)
-AddToggle("Fullbright (Cerahkan)", State.Fullbright, function(v) ToggleFullbright(v) end)
-AddToggle("Camera X-Ray", State.CameraXRay, function(v) State.CameraXRay = v end)
-
-AddCategory("FITUR AKSI")
-AddToggle("Air Walk + Noclip", State.AirWalkNoclip, function(v) State.AirWalkNoclip = v end)
-AddToggle("Bebas Kamera (Bypass)", State.BypassCamera, function(v) State.BypassCamera = v end)
-AddWalkspeedControl()
-AddButton("TP Player Terjauh", function() TeleportFarthestPlayer() end)
-AddButton("Hop Full Server", function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end)
-
-print("Zenith Mini UI Loaded Successfully!")
+    
