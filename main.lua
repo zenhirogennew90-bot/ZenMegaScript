@@ -1,5 +1,5 @@
 -- ===================================================================
--- ZENITH ELEGANT 1:1 - MINI HYBRID SCRIPT (SOUND REMOVED + SMOOTH DRAG)
+-- ZENITH ELEGANT 1:1 - MINI HYBRID SCRIPT (GRADIENT FLOATING BUTTON)
 -- Features: Visual, Air Walk + Noclip Combo, Simple Speed Controller
 -- ===================================================================
 
@@ -280,14 +280,14 @@ MainStroke.Color = Color3.fromRGB(35, 42, 60)
 MainStroke.Thickness = 1
 MainStroke.Parent = MainFrame
 
--- Floating Toggle Button (Tema Hitam, Border Biru Terang & Bulatan Merah Keren)
+-- Floating Toggle Button (Dengan Gradasi Varian Warna, Border Biru Terang & Bulatan Merah)
 local FloatBtn = Instance.new("TextButton")
 FloatBtn.Name = "FloatButton"
 FloatBtn.Size = UDim2.new(0, 54, 0, 54)
 FloatBtn.Position = UDim2.new(0, 15, 0.4, 0)
-FloatBtn.BackgroundColor3 = Color3.fromRGB(8, 10, 14)
+FloatBtn.BackgroundColor3 = Color3.fromRGB(15, 20, 30)
 FloatBtn.Text = "Z"
-FloatBtn.TextColor3 = Color3.fromRGB(60, 170, 255)
+FloatBtn.TextColor3 = Color3.fromRGB(80, 200, 255)
 FloatBtn.Font = Enum.Font.GothamBold
 FloatBtn.TextSize = 22
 FloatBtn.Visible = false
@@ -299,19 +299,21 @@ FloatCorner.CornerRadius = UDim.new(1, 0)
 FloatCorner.Parent = FloatBtn
 
 local FloatStroke = Instance.new("UIStroke")
-FloatStroke.Color = Color3.fromRGB(40, 140, 255)
-FloatStroke.Thickness = 2
+FloatStroke.Color = Color3.fromRGB(40, 160, 255)
+FloatStroke.Thickness = 2.5
 FloatStroke.Parent = FloatBtn
 
+-- Varian Gradasi Warna Mewah pada Tombol Floating
 local FloatGrad = Instance.new("UIGradient")
 FloatGrad.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(18, 22, 32)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(6, 8, 12))
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(28, 40, 65)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(14, 18, 28)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(8, 11, 16))
 })
-FloatGrad.Rotation = 45
+FloatGrad.Rotation = 135
 FloatGrad.Parent = FloatBtn
 
--- Aksen Bulatan Merah Keren (Red Dot Badge)
+-- Aksen Bulatan Merah Terang (Red Dot Badge)
 local RedDot = Instance.new("Frame")
 RedDot.Name = "RedDotAccent"
 RedDot.Size = UDim2.new(0, 15, 0, 15)
@@ -574,8 +576,4 @@ local function AddWalkspeedControl()
     UpdateDisplay()
 end
 
--- -------------------------------------------------------------------
--- BUILD UI ITEMS
--- -------------------------------------------------------------------
-
-AddCategory("FITUR 
+-- ------------------------------------------------
