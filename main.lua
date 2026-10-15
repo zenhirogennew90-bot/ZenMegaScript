@@ -1,6 +1,6 @@
 -- ===================================================================
--- ZENITH ELEGANT 1:1 - MINI HYBRID SCRIPT (UPDATED COMBO)
--- Features: Visual, Air Walk + Noclip Combo, Simple Speed Controller
+-- ZENITH ELEGANT 1:1 - MINI HYBRID SCRIPT (FIXED AIR WALK & NOCLIP)
+-- Features: Visual, Stable Air Walk + Noclip Combo, Simple Speed Controller
 -- ===================================================================
 
 local Players = game:GetService("Players")
@@ -26,7 +26,7 @@ local State = {
     CameraXRay = false,
     
     -- Action Features
-    AirWalkNoclip = false, -- Combo Air Walk & Noclip
+    AirWalkNoclip = false, -- Combo Air Walk & Noclip (Anti-Fall Through)
     BypassCamera = false,
     WalkspeedToggle = false,
     WalkspeedValue = 16,
@@ -175,7 +175,7 @@ local function UpdateCameraSystem()
 end
 
 -- -------------------------------------------------------------------
--- ACTION FEATURES IMPLEMENTATION (Air Walk + Noclip Combo)
+-- ACTION FEATURES IMPLEMENTATION (Stable Air Walk + Noclip Combo)
 -- -------------------------------------------------------------------
 local AirWalkPlatform = Instance.new("Part")
 AirWalkPlatform.Size = Vector3.new(8, 0.4, 8)
@@ -184,32 +184,33 @@ AirWalkPlatform.Transparency = 1
 AirWalkPlatform.Color = Color3.fromRGB(150, 80, 255)
 AirWalkPlatform.Material = Enum.Material.SmoothPlastic
 AirWalkPlatform.CanCollide = false
-AirWalkPlatform.Name = "ZenAirWalkNoclip"
+AirWalkPlatform.Name = "ZenAirWalkNoclipStable"
 AirWalkPlatform.Parent = workspace
-
-local lockedY = nil
 
 local function UpdateAirWalkNoclip()
     local char = GetCharacter(LocalPlayer)
     local root = GetRoot(LocalPlayer)
     
     if State.AirWalkNoclip and char and root then
-        if not lockedY then
-            lockedY = root.Position.Y - 3.15
+        -- Dynamic tracking: platform stays right under the player's current height
+        local targetY = root.Position.Y - 3.15
+        AirWalkPlatform.CFrame = CFrame.new(root.Position.X, targetY, root.Position.Z)
+        AirWalkPlatform.CanCollide = true
+        AirWalkPlatform.Transparency = 0.4
+
+        -- Anti-Fall Through & Anti-Knockback: Neutralize downward velocity when hit or falling
+        local vel = root.AssemblyLinearVelocity
+        if vel.Y < 0 then
+            root.AssemblyLinearVelocity = Vector3.new(vel.X, 0, vel.Z)
         end
 
-        AirWalkPlatform.CFrame = CFrame.new(root.Position.X, lockedY, root.Position.Z)
-        AirWalkPlatform.CanCollide = true
-        AirWalkPlatform.Transparency = 0.5
-
-        -- Noclip integration: disable collision for character parts
+        -- Noclip integration: disable collision for character parts except platform
         for _, part in pairs(char:GetDescendants()) do
             if part:IsA("BasePart") and part ~= AirWalkPlatform and part.CanCollide then
                 part.CanCollide = false
             end
         end
     else
-        lockedY = nil
         AirWalkPlatform.CanCollide = false
         AirWalkPlatform.Transparency = 1
     end
@@ -448,7 +449,7 @@ local function AddButton(text, callback)
     end)
 end
 
--- Simple Quick Walkspeed Control (No manual typing, uses +/- and toggle)
+-- Simple Quick Walkspeed Control (+/- and Toggle)
 local function AddWalkspeedControl()
     local container = Instance.new("Frame")
     container.Size = UDim2.new(1, -6, 0, 32)
@@ -459,7 +460,7 @@ local function AddWalkspeedControl()
     corner.CornerRadius = UDim.new(0, 6)
     corner.Parent = container
 
-    local label = Instance.new("TextButton") -- Tap label to toggle ON/OFF
+    local label = Instance.new("TextButton")
     label.Size = UDim2.new(0.55, 0, 1, 0)
     label.Position = UDim2.new(0, 8, 0, 0)
     label.BackgroundTransparency = 1
