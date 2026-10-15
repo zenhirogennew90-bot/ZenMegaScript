@@ -1,5 +1,5 @@
 -- ===================================================================
--- ZENITH ELEGANT 1:1 - MINI HYBRID SCRIPT (BLACK THEME + RED/BLUE ACCENT)
+-- ZENITH ELEGANT 1:1 - MINI HYBRID SCRIPT (SOUND REMOVED + SMOOTH DRAG)
 -- Features: Visual, Air Walk + Noclip Combo, Simple Speed Controller
 -- ===================================================================
 
@@ -10,7 +10,6 @@ local TweenService = game:GetService("TweenService")
 local Lighting = game:GetService("Lighting")
 local TeleportService = game:GetService("TeleportService")
 local CoreGui = game:GetService("CoreGui")
-local SoundService = game:GetService("SoundService")
 
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
@@ -39,21 +38,6 @@ local State = {
 }
 
 local ESPStorage = {}
-
--- -------------------------------------------------------------------
--- AUDIO SYSTEM (Calm & Soft Feedback)
--- -------------------------------------------------------------------
-local function PlaySoftSound()
-    local sound = Instance.new("Sound")
-    sound.SoundId = "rbxassetid://6895079853"
-    sound.Volume = 0.3
-    sound.Pitch = 1.2
-    sound.Parent = SoundService
-    sound:Play()
-    sound.Ended:Connect(function()
-        sound:Destroy()
-    end)
-end
 
 -- -------------------------------------------------------------------
 -- HELPER FUNCTIONS
@@ -308,7 +292,6 @@ FloatBtn.Font = Enum.Font.GothamBold
 FloatBtn.TextSize = 22
 FloatBtn.Visible = false
 FloatBtn.Active = true
-FloatBtn.Draggable = true
 FloatBtn.Parent = ScreenGui
 
 local FloatCorner = Instance.new("UICorner")
@@ -346,6 +329,34 @@ RedDotStroke.Color = Color3.fromRGB(255, 130, 140)
 RedDotStroke.Thickness = 1.5
 RedDotStroke.Parent = RedDot
 
+-- Smooth Dragging Logic for Floating Button
+local dragging, dragInput, dragStart, startPos
+FloatBtn.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = FloatBtn.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        local targetPos = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+        TweenService:Create(FloatBtn, TweenInfo.new(0.08, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {Position = targetPos}):Play()
+    end
+end)
+
 -- Header Bar
 local Header = Instance.new("Frame")
 Header.Size = UDim2.new(1, 0, 0, 36)
@@ -377,16 +388,33 @@ local CloseCorner = Instance.new("UICorner")
 CloseCorner.CornerRadius = UDim.new(0, 6)
 CloseCorner.Parent = CloseBtn
 
+-- Smooth Minimize / Maximize Animations
 CloseBtn.MouseButton1Click:Connect(function()
-    PlaySoftSound()
-    MainFrame.Visible = false
-    FloatBtn.Visible = true
+    local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+    TweenService:Create(MainFrame, tweenInfo, {Size = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 1}):Play()
+    task.delay(0.2, function()
+        MainFrame.Visible = false
+        MainFrame.Size = UDim2.new(0, 260, 0, 260)
+        MainFrame.BackgroundTransparency = 0
+        
+        FloatBtn.Size = UDim2.new(0, 0, 0, 0)
+        FloatBtn.Visible = true
+        TweenService:Create(FloatBtn, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 54, 0, 54)}):Play()
+    end)
 end)
 
 FloatBtn.MouseButton1Click:Connect(function()
-    PlaySoftSound()
-    FloatBtn.Visible = false
-    MainFrame.Visible = true
+    local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+    TweenService:Create(FloatBtn, tweenInfo, {Size = UDim2.new(0, 0, 0, 0)}):Play()
+    task.delay(0.2, function()
+        FloatBtn.Visible = false
+        FloatBtn.Size = UDim2.new(0, 54, 0, 54)
+        
+        MainFrame.Size = UDim2.new(0, 0, 0, 0)
+        MainFrame.BackgroundTransparency = 1
+        MainFrame.Visible = true
+        TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 260, 0, 260), BackgroundTransparency = 0}):Play()
+    end)
 end)
 
 -- Scrolling Container
@@ -441,7 +469,6 @@ local function AddToggle(text, defaultState, callback)
     Render()
 
     btn.MouseButton1Click:Connect(function()
-        PlaySoftSound()
         currentState = not currentState
         Render()
         TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = currentState and Color3.fromRGB(24, 32, 45) or Color3.fromRGB(16, 19, 26)}):Play()
@@ -464,7 +491,6 @@ local function AddButton(text, callback)
     corner.Parent = btn
 
     btn.MouseButton1Click:Connect(function()
-        PlaySoftSound()
         TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(35, 42, 60)}):Play()
         task.delay(0.1, function()
             TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(20, 24, 34)}):Play()
@@ -529,20 +555,17 @@ local function AddWalkspeedControl()
     end
 
     label.MouseButton1Click:Connect(function()
-        PlaySoftSound()
         State.WalkspeedToggle = not State.WalkspeedToggle
         UpdateDisplay()
     end)
 
     minusBtn.MouseButton1Click:Connect(function()
-        PlaySoftSound()
         State.WalkspeedValue = math.max(16, State.WalkspeedValue - 8)
         State.WalkspeedToggle = true
         UpdateDisplay()
     end)
 
     plusBtn.MouseButton1Click:Connect(function()
-        PlaySoftSound()
         State.WalkspeedValue = math.min(250, State.WalkspeedValue + 8)
         State.WalkspeedToggle = true
         UpdateDisplay()
@@ -555,17 +578,4 @@ end
 -- BUILD UI ITEMS
 -- -------------------------------------------------------------------
 
-AddCategory("FITUR VISUAL")
-AddToggle("ESP Box", State.ESPBox, function(v) State.ESPBox = v end)
-AddToggle("ESP Line", State.ESPLine, function(v) State.ESPLine = v end)
-AddToggle("Fullbright (Cerahkan)", State.Fullbright, function(v) ToggleFullbright(v) end)
-AddToggle("Camera X-Ray", State.CameraXRay, function(v) State.CameraXRay = v end)
-
-AddCategory("FITUR AKSI")
-AddToggle("Air Walk + Noclip", State.AirWalkNoclip, function(v) State.AirWalkNoclip = v end)
-AddWalkspeedControl()
-AddButton("TP Player Terjauh", function() TeleportFarthestPlayer() end)
-AddButton("Hop Full Server", function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end)
-
-print("Zenith Mini UI Loaded Successfully!")
-0
+AddCategory("FITUR 
