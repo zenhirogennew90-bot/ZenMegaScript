@@ -1,5 +1,5 @@
 -- ===================================================================
--- ZENITH ELEGANT 1:1 - MINI HYBRID SCRIPT (IMPROVED UI CONTRAST)
+-- ZENITH ELEGANT 1:1 - MINI HYBRID SCRIPT (FULL SMOOTH ANIMATIONS)
 -- Features: Visual, Air Walk + Noclip Combo, Simple Speed Controller
 -- ===================================================================
 
@@ -54,6 +54,47 @@ end
 local function GetHumanoid(player)
     local char = GetCharacter(player)
     return char and char:FindFirstChildOfClass("Humanoid") or nil
+end
+
+-- Function untuk menambahkan fitur Smooth Dragging pada Frame/Button apa pun
+local function MakeSmoothDraggable(frame)
+    local dragging = false
+    local dragInput
+    local dragStart
+    local startPos
+
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    frame.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            local targetPos = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+            TweenService:Create(frame, TweenInfo.new(0.1, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {Position = targetPos}):Play()
+        end
+    end)
 end
 
 -- -------------------------------------------------------------------
@@ -185,7 +226,6 @@ local function UpdateAirWalkNoclip()
         AirWalkPlatform.CanCollide = true
         AirWalkPlatform.Transparency = 0.5
 
-        -- Noclip integration: disable collision for character parts
         for _, part in pairs(char:GetDescendants()) do
             if part:IsA("BasePart") and part ~= AirWalkPlatform and part.CanCollide then
                 part.CanCollide = false
@@ -259,15 +299,14 @@ else
     ScreenGui.Parent = CoreGui
 end
 
--- Main Box 1:1 Aspect Ratio (260x260 pixel) dengan Gradasi Navy Mewah
+-- Main Box 1:1 Aspect Ratio (260x260 pixel)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 260, 0, 260)
 MainFrame.Position = UDim2.new(0.5, -130, 0.5, -130)
-MainFrame.BackgroundColor3 = Color3.fromRGB(22, 26, 38)
+MainFrame.BackgroundColor3 = Color3.fromRGB(10, 12, 16)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
-MainFrame.Draggable = true
 MainFrame.ClipsDescendants = true
 MainFrame.Parent = ScreenGui
 
@@ -276,26 +315,21 @@ MainCorner.CornerRadius = UDim.new(0, 12)
 MainCorner.Parent = MainFrame
 
 local MainStroke = Instance.new("UIStroke")
-MainStroke.Color = Color3.fromRGB(60, 75, 110)
-MainStroke.Thickness = 1.5
+MainStroke.Color = Color3.fromRGB(35, 42, 60)
+MainStroke.Thickness = 1
 MainStroke.Parent = MainFrame
 
-local MainGrad = Instance.new("UIGradient")
-MainGrad.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(28, 34, 50)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(16, 20, 28))
-})
-MainGrad.Rotation = 45
-MainGrad.Parent = MainFrame
+-- Terapkan Smooth Dragging ke Menu Utama
+MakeSmoothDraggable(MainFrame)
 
--- Floating Toggle Button (Elegan: Gradasi Navy, Border Biru Terang & Bulatan Merah)
+-- Floating Toggle Button
 local FloatBtn = Instance.new("TextButton")
 FloatBtn.Name = "FloatButton"
 FloatBtn.Size = UDim2.new(0, 54, 0, 54)
 FloatBtn.Position = UDim2.new(0, 15, 0.4, 0)
-FloatBtn.BackgroundColor3 = Color3.fromRGB(20, 25, 38)
+FloatBtn.BackgroundColor3 = Color3.fromRGB(8, 10, 14)
 FloatBtn.Text = "Z"
-FloatBtn.TextColor3 = Color3.fromRGB(90, 210, 255)
+FloatBtn.TextColor3 = Color3.fromRGB(60, 170, 255)
 FloatBtn.Font = Enum.Font.GothamBold
 FloatBtn.TextSize = 22
 FloatBtn.Visible = false
@@ -307,20 +341,19 @@ FloatCorner.CornerRadius = UDim.new(1, 0)
 FloatCorner.Parent = FloatBtn
 
 local FloatStroke = Instance.new("UIStroke")
-FloatStroke.Color = Color3.fromRGB(40, 160, 255)
-FloatStroke.Thickness = 2.5
+FloatStroke.Color = Color3.fromRGB(40, 140, 255)
+FloatStroke.Thickness = 2
 FloatStroke.Parent = FloatBtn
 
 local FloatGrad = Instance.new("UIGradient")
 FloatGrad.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(32, 45, 75)),
-    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(18, 24, 38)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 14, 22))
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(18, 22, 32)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(6, 8, 12))
 })
-FloatGrad.Rotation = 135
+FloatGrad.Rotation = 45
 FloatGrad.Parent = FloatBtn
 
--- Aksen Bulatan Merah Terang (Red Dot Badge)
+-- Aksen Bulatan Merah Keren (Red Dot Badge)
 local RedDot = Instance.new("Frame")
 RedDot.Name = "RedDotAccent"
 RedDot.Size = UDim2.new(0, 15, 0, 15)
@@ -338,33 +371,8 @@ RedDotStroke.Color = Color3.fromRGB(255, 130, 140)
 RedDotStroke.Thickness = 1.5
 RedDotStroke.Parent = RedDot
 
--- Smooth Dragging Logic for Floating Button
-local dragging, dragInput, dragStart, startPos
-FloatBtn.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = FloatBtn.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        local delta = input.Position - dragStart
-        local targetPos = UDim2.new(
-            startPos.X.Scale,
-            startPos.X.Offset + delta.X,
-            startPos.Y.Scale,
-            startPos.Y.Offset + delta.Y
-        )
-        TweenService:Create(FloatBtn, TweenInfo.new(0.08, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {Position = targetPos}):Play()
-    end
-end)
+-- Terapkan Smooth Dragging ke Floating Button
+MakeSmoothDraggable(FloatBtn)
 
 -- Header Bar
 local Header = Instance.new("Frame")
@@ -376,7 +384,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 12, 0, 0)
 Title.Text = "ZENITH • MINI"
-Title.TextColor3 = Color3.fromRGB(230, 235, 250)
+Title.TextColor3 = Color3.fromRGB(220, 225, 240)
 Title.TextSize = 13
 Title.Font = Enum.Font.GothamBold
 Title.TextXAlignment = Enum.TextXAlignment.Left
@@ -387,8 +395,8 @@ local CloseBtn = Instance.new("TextButton")
 CloseBtn.Size = UDim2.new(0, 24, 0, 24)
 CloseBtn.Position = UDim2.new(1, -30, 0, 6)
 CloseBtn.Text = "-"
-CloseBtn.TextColor3 = Color3.fromRGB(200, 205, 220)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(32, 38, 52)
+CloseBtn.TextColor3 = Color3.fromRGB(160, 165, 180)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(20, 24, 33)
 CloseBtn.Font = Enum.Font.GothamBold
 CloseBtn.TextSize = 14
 CloseBtn.Parent = Header
@@ -432,7 +440,7 @@ Scroll.Size = UDim2.new(1, -16, 1, -42)
 Scroll.Position = UDim2.new(0, 8, 0, 38)
 Scroll.BackgroundTransparency = 1
 Scroll.ScrollBarThickness = 2
-Scroll.ScrollBarImageColor3 = Color3.fromRGB(80, 100, 140)
+Scroll.ScrollBarImageColor3 = Color3.fromRGB(60, 70, 95)
 Scroll.Parent = MainFrame
 
 local Layout = Instance.new("UIListLayout")
@@ -445,12 +453,12 @@ Layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     Scroll.CanvasSize = UDim2.new(0, 0, 0, Layout.AbsoluteContentSize.Y + 10)
 end)
 
--- UI Helpers dengan Kontras yang Jelas
+-- UI Helpers
 local function AddCategory(name)
     local label = Instance.new("TextLabel")
     label.Size = UDim2.new(1, -6, 0, 20)
     label.Text = name
-    label.TextColor3 = Color3.fromRGB(120, 140, 180)
+    label.TextColor3 = Color3.fromRGB(90, 105, 140)
     label.TextSize = 10
     label.Font = Enum.Font.GothamBold
     label.TextXAlignment = Enum.TextXAlignment.Left
@@ -461,7 +469,7 @@ end
 local function AddToggle(text, defaultState, callback)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -6, 0, 28)
-    btn.BackgroundColor3 = Color3.fromRGB(28, 34, 48)
+    btn.BackgroundColor3 = Color3.fromRGB(16, 19, 26)
     btn.Font = Enum.Font.GothamMedium
     btn.TextSize = 11
     btn.Parent = Scroll
@@ -470,22 +478,17 @@ local function AddToggle(text, defaultState, callback)
     corner.CornerRadius = UDim.new(0, 6)
     corner.Parent = btn
 
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(48, 58, 82)
-    stroke.Thickness = 1
-    stroke.Parent = btn
-
     local currentState = defaultState
     local function Render()
         btn.Text = text .. " -> " .. (currentState and "ON" or "OFF")
-        btn.TextColor3 = currentState and Color3.fromRGB(110, 240, 180) or Color3.fromRGB(180, 185, 200)
+        btn.TextColor3 = currentState and Color3.fromRGB(100, 230, 160) or Color3.fromRGB(160, 165, 180)
     end
     Render()
 
     btn.MouseButton1Click:Connect(function()
         currentState = not currentState
         Render()
-        TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = currentState and Color3.fromRGB(36, 48, 72) or Color3.fromRGB(28, 34, 48)}):Play()
+        TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = currentState and Color3.fromRGB(24, 32, 45) or Color3.fromRGB(16, 19, 26)}):Play()
         pcall(callback, currentState)
     end)
 end
@@ -493,9 +496,9 @@ end
 local function AddButton(text, callback)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -6, 0, 28)
-    btn.BackgroundColor3 = Color3.fromRGB(32, 38, 55)
+    btn.BackgroundColor3 = Color3.fromRGB(20, 24, 34)
     btn.Text = text
-    btn.TextColor3 = Color3.fromRGB(210, 215, 235)
+    btn.TextColor3 = Color3.fromRGB(200, 205, 220)
     btn.Font = Enum.Font.GothamMedium
     btn.TextSize = 11
     btn.Parent = Scroll
@@ -504,15 +507,10 @@ local function AddButton(text, callback)
     corner.CornerRadius = UDim.new(0, 6)
     corner.Parent = btn
 
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(55, 68, 98)
-    stroke.Thickness = 1
-    stroke.Parent = btn
-
     btn.MouseButton1Click:Connect(function()
-        TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(48, 62, 92)}):Play()
+        TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(35, 42, 60)}):Play()
         task.delay(0.1, function()
-            TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(32, 38, 55)}):Play()
+            TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(20, 24, 34)}):Play()
         end)
         pcall(callback)
     end)
@@ -522,24 +520,19 @@ end
 local function AddWalkspeedControl()
     local container = Instance.new("Frame")
     container.Size = UDim2.new(1, -6, 0, 32)
-    container.BackgroundColor3 = Color3.fromRGB(28, 34, 48)
+    container.BackgroundColor3 = Color3.fromRGB(16, 19, 26)
     container.Parent = Scroll
 
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 6)
     corner.Parent = container
 
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(48, 58, 82)
-    stroke.Thickness = 1
-    stroke.Parent = container
-
     local label = Instance.new("TextButton")
     label.Size = UDim2.new(0.55, 0, 1, 0)
     label.Position = UDim2.new(0, 8, 0, 0)
     label.BackgroundTransparency = 1
     label.Text = "Speed: 16"
-    label.TextColor3 = Color3.fromRGB(180, 185, 200)
+    label.TextColor3 = Color3.fromRGB(160, 165, 180)
     label.TextSize = 11
     label.Font = Enum.Font.GothamMedium
     label.TextXAlignment = Enum.TextXAlignment.Left
@@ -548,9 +541,9 @@ local function AddWalkspeedControl()
     local minusBtn = Instance.new("TextButton")
     minusBtn.Size = UDim2.new(0, 26, 0, 22)
     minusBtn.Position = UDim2.new(0.58, 0, 0.15, 0)
-    minusBtn.BackgroundColor3 = Color3.fromRGB(36, 44, 64)
+    minusBtn.BackgroundColor3 = Color3.fromRGB(20, 24, 34)
     minusBtn.Text = "-"
-    minusBtn.TextColor3 = Color3.fromRGB(210, 215, 235)
+    minusBtn.TextColor3 = Color3.fromRGB(200, 205, 220)
     minusBtn.Font = Enum.Font.GothamBold
     minusBtn.TextSize = 12
     minusBtn.Parent = container
@@ -562,9 +555,9 @@ local function AddWalkspeedControl()
     local plusBtn = Instance.new("TextButton")
     plusBtn.Size = UDim2.new(0, 26, 0, 22)
     plusBtn.Position = UDim2.new(0.78, 0, 0.15, 0)
-    plusBtn.BackgroundColor3 = Color3.fromRGB(36, 44, 64)
+    plusBtn.BackgroundColor3 = Color3.fromRGB(20, 24, 34)
     plusBtn.Text = "+"
-    plusBtn.TextColor3 = Color3.fromRGB(210, 215, 235)
+    plusBtn.TextColor3 = Color3.fromRGB(200, 205, 220)
     plusBtn.Font = Enum.Font.GothamBold
     plusBtn.TextSize = 12
     plusBtn.Parent = container
@@ -575,4 +568,19 @@ local function AddWalkspeedControl()
 
     local function UpdateDisplay()
         label.Text = "Speed: " .. State.WalkspeedValue .. " (" .. (State.WalkspeedToggle and "ON" or "OFF") .. ")"
-        label.TextColor3 = State.Walkspe
+        label.TextColor3 = State.WalkspeedToggle and Color3.fromRGB(100, 230, 160) or Color3.fromRGB(160, 165, 180)
+    end
+
+    label.MouseButton1Click:Connect(function()
+        State.WalkspeedToggle = not State.WalkspeedToggle
+        UpdateDisplay()
+    end)
+
+    minusBtn.MouseButton1Click:Connect(function()
+        State.WalkspeedValue = math.max(16, State.WalkspeedValue - 8)
+        State.WalkspeedToggle = true
+        UpdateDisplay()
+    end)
+
+    plusBtn.MouseButton1Click:Connect(function()
+ 
