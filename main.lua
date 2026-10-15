@@ -1,6 +1,6 @@
 -- ===================================================================
--- ZENITH ELEGANT 1:1 - MINI HYBRID SCRIPT (REVERTED AIR WALK & NOCLIP)
--- Features: Visual, Original Air Walk + Noclip, Simple Speed Controller
+-- ZENITH ELEGANT 1:1 - MINI HYBRID SCRIPT (UPDATED ELEGAN FLOAT)
+-- Features: Visual, Air Walk + Noclip Combo, Simple Speed Controller
 -- ===================================================================
 
 local Players = game:GetService("Players")
@@ -26,8 +26,7 @@ local State = {
     CameraXRay = false,
     
     -- Action Features
-    AirWalkNoclip = false, -- Original Air Walk & Noclip Combo
-    BypassCamera = false,
+    AirWalkNoclip = false, -- Combo Air Walk & Noclip
     WalkspeedToggle = false,
     WalkspeedValue = 16,
     
@@ -165,7 +164,7 @@ local function ToggleFullbright(value)
 end
 
 local function UpdateCameraSystem()
-    if State.CameraXRay or State.BypassCamera then
+    if State.CameraXRay then
         LocalPlayer.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode.Invisicam
         LocalPlayer.CameraMinZoomDistance = 0.5
         LocalPlayer.CameraMaxZoomDistance = 400
@@ -175,7 +174,7 @@ local function UpdateCameraSystem()
 end
 
 -- -------------------------------------------------------------------
--- ACTION FEATURES IMPLEMENTATION (Original Air Walk + Noclip Combo)
+-- ACTION FEATURES IMPLEMENTATION (Air Walk + Noclip Combo)
 -- -------------------------------------------------------------------
 local AirWalkPlatform = Instance.new("Part")
 AirWalkPlatform.Size = Vector3.new(8, 0.4, 8)
@@ -297,16 +296,16 @@ MainStroke.Color = Color3.fromRGB(45, 52, 70)
 MainStroke.Thickness = 1
 MainStroke.Parent = MainFrame
 
--- Floating Toggle Button
+-- Floating Toggle Button (Elegan & Diperbesar ke 52x52)
 local FloatBtn = Instance.new("TextButton")
 FloatBtn.Name = "FloatButton"
-FloatBtn.Size = UDim2.new(0, 42, 0, 42)
+FloatBtn.Size = UDim2.new(0, 52, 0, 52)
 FloatBtn.Position = UDim2.new(0, 15, 0.4, 0)
-FloatBtn.BackgroundColor3 = Color3.fromRGB(20, 24, 33)
+FloatBtn.BackgroundColor3 = Color3.fromRGB(22, 25, 36)
 FloatBtn.Text = "Z"
-FloatBtn.TextColor3 = Color3.fromRGB(120, 140, 255)
+FloatBtn.TextColor3 = Color3.fromRGB(140, 160, 255)
 FloatBtn.Font = Enum.Font.GothamBold
-FloatBtn.TextSize = 16
+FloatBtn.TextSize = 20
 FloatBtn.Visible = false
 FloatBtn.Active = true
 FloatBtn.Draggable = true
@@ -317,9 +316,17 @@ FloatCorner.CornerRadius = UDim.new(1, 0)
 FloatCorner.Parent = FloatBtn
 
 local FloatStroke = Instance.new("UIStroke")
-FloatStroke.Color = Color3.fromRGB(60, 70, 95)
-FloatStroke.Thickness = 1.5
+FloatStroke.Color = Color3.fromRGB(80, 95, 140)
+FloatStroke.Thickness = 2
 FloatStroke.Parent = FloatBtn
+
+local FloatGrad = Instance.new("UIGradient")
+FloatGrad.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(32, 38, 55)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(16, 19, 28))
+})
+FloatGrad.Rotation = 45
+FloatGrad.Parent = FloatBtn
 
 -- Header Bar
 local Header = Instance.new("Frame")
@@ -393,4 +400,153 @@ local function AddCategory(name)
     label.Font = Enum.Font.GothamBold
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.BackgroundTransparency = 1
-    
+    label.Parent = Scroll
+end
+
+local function AddToggle(text, defaultState, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -6, 0, 28)
+    btn.BackgroundColor3 = Color3.fromRGB(22, 25, 34)
+    btn.Font = Enum.Font.GothamMedium
+    btn.TextSize = 11
+    btn.Parent = Scroll
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+
+    local currentState = defaultState
+    local function Render()
+        btn.Text = text .. " -> " .. (currentState and "ON" or "OFF")
+        btn.TextColor3 = currentState and Color3.fromRGB(120, 220, 160) or Color3.fromRGB(160, 165, 180)
+    end
+    Render()
+
+    btn.MouseButton1Click:Connect(function()
+        PlaySoftSound()
+        currentState = not currentState
+        Render()
+        TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = currentState and Color3.fromRGB(28, 35, 48) or Color3.fromRGB(22, 25, 34)}):Play()
+        pcall(callback, currentState)
+    end)
+end
+
+local function AddButton(text, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -6, 0, 28)
+    btn.BackgroundColor3 = Color3.fromRGB(28, 32, 44)
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(200, 205, 220)
+    btn.Font = Enum.Font.GothamMedium
+    btn.TextSize = 11
+    btn.Parent = Scroll
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+
+    btn.MouseButton1Click:Connect(function()
+        PlaySoftSound()
+        TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(40, 48, 65)}):Play()
+        task.delay(0.1, function()
+            TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(28, 32, 44)}):Play()
+        end)
+        pcall(callback)
+    end)
+end
+
+-- Simple Quick Walkspeed Control
+local function AddWalkspeedControl()
+    local container = Instance.new("Frame")
+    container.Size = UDim2.new(1, -6, 0, 32)
+    container.BackgroundColor3 = Color3.fromRGB(22, 25, 34)
+    container.Parent = Scroll
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = container
+
+    local label = Instance.new("TextButton")
+    label.Size = UDim2.new(0.55, 0, 1, 0)
+    label.Position = UDim2.new(0, 8, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = "Speed: 16"
+    label.TextColor3 = Color3.fromRGB(160, 165, 180)
+    label.TextSize = 11
+    label.Font = Enum.Font.GothamMedium
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = container
+
+    local minusBtn = Instance.new("TextButton")
+    minusBtn.Size = UDim2.new(0, 26, 0, 22)
+    minusBtn.Position = UDim2.new(0.58, 0, 0.15, 0)
+    minusBtn.BackgroundColor3 = Color3.fromRGB(28, 32, 44)
+    minusBtn.Text = "-"
+    minusBtn.TextColor3 = Color3.fromRGB(200, 205, 220)
+    minusBtn.Font = Enum.Font.GothamBold
+    minusBtn.TextSize = 12
+    minusBtn.Parent = container
+
+    local mCorner = Instance.new("UICorner")
+    mCorner.CornerRadius = UDim.new(0, 4)
+    mCorner.Parent = minusBtn
+
+    local plusBtn = Instance.new("TextButton")
+    plusBtn.Size = UDim2.new(0, 26, 0, 22)
+    plusBtn.Position = UDim2.new(0.78, 0, 0.15, 0)
+    plusBtn.BackgroundColor3 = Color3.fromRGB(28, 32, 44)
+    plusBtn.Text = "+"
+    plusBtn.TextColor3 = Color3.fromRGB(200, 205, 220)
+    plusBtn.Font = Enum.Font.GothamBold
+    plusBtn.TextSize = 12
+    plusBtn.Parent = container
+
+    local pCorner = Instance.new("UICorner")
+    pCorner.CornerRadius = UDim.new(0, 4)
+    pCorner.Parent = plusBtn
+
+    local function UpdateDisplay()
+        label.Text = "Speed: " .. State.WalkspeedValue .. " (" .. (State.WalkspeedToggle and "ON" or "OFF") .. ")"
+        label.TextColor3 = State.WalkspeedToggle and Color3.fromRGB(120, 220, 160) or Color3.fromRGB(160, 165, 180)
+    end
+
+    label.MouseButton1Click:Connect(function()
+        PlaySoftSound()
+        State.WalkspeedToggle = not State.WalkspeedToggle
+        UpdateDisplay()
+    end)
+
+    minusBtn.MouseButton1Click:Connect(function()
+        PlaySoftSound()
+        State.WalkspeedValue = math.max(16, State.WalkspeedValue - 8)
+        State.WalkspeedToggle = true
+        UpdateDisplay()
+    end)
+
+    plusBtn.MouseButton1Click:Connect(function()
+        PlaySoftSound()
+        State.WalkspeedValue = math.min(250, State.WalkspeedValue + 8)
+        State.WalkspeedToggle = true
+        UpdateDisplay()
+    end)
+
+    UpdateDisplay()
+end
+
+-- -------------------------------------------------------------------
+-- BUILD UI ITEMS
+-- -------------------------------------------------------------------
+
+AddCategory("FITUR VISUAL")
+AddToggle("ESP Box", State.ESPBox, function(v) State.ESPBox = v end)
+AddToggle("ESP Line", State.ESPLine, function(v) State.ESPLine = v end)
+AddToggle("Fullbright (Cerahkan)", State.Fullbright, function(v) ToggleFullbright(v) end)
+AddToggle("Camera X-Ray", State.CameraXRay, function(v) State.CameraXRay = v end)
+
+AddCategory("FITUR AKSI")
+AddToggle("Air Walk + Noclip", State.AirWalkNoclip, function(v) State.AirWalkNoclip = v end)
+AddWalkspeedControl()
+AddButton("TP Player Terjauh", function() TeleportFarthestPlayer() end)
+AddButton("Hop Full Server", function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end)
+
+print("Zenith Mini UI Loaded Successfully!")
