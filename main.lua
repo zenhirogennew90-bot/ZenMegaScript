@@ -1,346 +1,521 @@
--- ===================================================================
--- ZENITH ELEGANT 1:1 - NEW CLEAN HYBRID MINI SCRIPT
--- Features: Visual, Air Walk + Noclip Combo, Simple Speed Controller
--- ===================================================================
+--[[
+    Project: ZenMegaScript - Advanced Mobile UI & Features
+    Environment: Roblox Luau (Delta Executor Compatible)
+    Features: Advanced ESP, Camera X-Ray, AirWalk + Noclip, Speed Controller (up to 250),
+              TP Farthest, TP Manual Name, Server Hop, Clean 260x260 Navy UI, Smooth "Z" Button, Elastic Animations.
+]]--
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
-local Lighting = game:GetService("Lighting")
-local TeleportService = game:GetService("TeleportService")
 local CoreGui = game:GetService("CoreGui")
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
+local UserInputService = game:GetService("UserInputService")
 
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- -------------------------------------------------------------------
--- 1. STATE MANAGEMENT
--- -------------------------------------------------------------------
-local State = {
-    -- Visual Features
-    ESPBox = false,
-    ESPLine = false,
-    Fullbright = false,
-    CameraXRay = false,
-    
-    -- Action Features
-    AirWalkNoclip = false,
-    WalkspeedToggle = false,
-    WalkspeedValue = 16,
-    
-    -- Environment Backup
-    OriginalAmbient = Lighting.Ambient,
-    OriginalOutdoorAmbient = Lighting.OutdoorAmbient,
-    OriginalBrightness = Lighting.Brightness,
-    OriginalClockTime = Lighting.ClockTime,
-    OriginalFogEnd = Lighting.FogEnd
+-- Hapus UI lama jika ada untuk mencegah duplikasi
+if CoreGui:FindFirstChild("ZenMegaScriptUI") then
+    CoreGui.ZenMegaScriptUI:Destroy()
+end
+
+-- ==========================================
+-- 1. UTILITY & STATE VARIABLES
+-- ==========================================
+local Config = {
+    ESP_Enabled = false,
+    Skeleton_Enabled = false,
+    Distance_Enabled = false,
+    Chams_Enabled = false,
+    CameraXRay_Enabled = false,
+    AirWalk_Enabled = false,
+    Noclip_Enabled = false,
+    WalkSpeed = 16,
 }
 
-local ESPStorage = {}
+local activeHighlights = {}
+local activeBillboards = {}
+local airWalkPlatform = nil
 
--- -------------------------------------------------------------------
--- 2. HELPER & UTILITY FUNCTIONS
--- -------------------------------------------------------------------
-local function GetCharacter(player)
-    return player and player.Character or nil
-end
-
-local function GetRoot(player)
-    local char = GetCharacter(player)
-    return char and char:FindFirstChild("HumanoidRootPart") or nil
-end
-
-local function GetHumanoid(player)
-    local char = GetCharacter(player)
-    return char and char:FindFirstChildOfClass("Humanoid") or nil
-end
-
--- -------------------------------------------------------------------
--- 3. CORE LOGIC IMPLEMENTATIONS
--- -------------------------------------------------------------------
-
--- ESP System
-local function ClearESP(player)
-    if ESPStorage[player] then
-        for _, obj in pairs(ESPStorage[player]) do
-            if obj and obj.Destroy then obj:Destroy() end
-        end
-        ESPStorage[player] = nil
-    end
-end
-
-local function CreateESP(player)
-    if player == LocalPlayer then return end
-    ClearESP(player)
-
-    local box = Drawing.new("Square")
-    box.Thickness = 1.2
-    box.Filled = false
-    box.Color = Color3.fromRGB(120, 140, 255)
-    box.Visible = false
-
-    local line = Drawing.new("Line")
-    line.Thickness = 1
-    line.Color = Color3.fromRGB(120, 140, 255)
-    line.Visible = false
-
-    ESPStorage[player] = {Box = box, Line = line}
-end
-
-local function UpdateESP()
-    for player, drawings in pairs(ESPStorage) do
-        local root = GetRoot(player)
-        local hum = GetHumanoid(player)
-        
-        if root and hum and hum.Health > 0 then
-            local pos, onScreen = Camera:WorldToViewportPoint(root.Position)
-            
-            if onScreen then
-                local head = GetCharacter(player):FindFirstChild("Head")
-                local headPos = head and Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0)) or pos
-                local legPos = Camera:WorldToViewportPoint(root.Position - Vector3.new(0, 3, 0))
-                
-                local height = math.abs(headPos.Y - legPos.Y)
-                local width = height / 2
-
-                if State.ESPBox then
-                    drawings.Box.Size = Vector2.new(width, height)
-                    drawings.Box.Position = Vector2.new(pos.X - width / 2, pos.Y - height / 2)
-                    drawings.Box.Visible = true
-                else
-                    drawings.Box.Visible = false
-                end
-
-                if State.ESPLine then
-                    drawings.Line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-                    drawings.Line.To = Vector2.new(pos.X, pos.Y)
-                    drawings.Line.Visible = true
-                else
-                    drawings.Line.Visible = false
-                end
-            else
-                drawings.Box.Visible = false
-                drawings.Line.Visible = false
-            end
-        else
-            drawings.Box.Visible = false
-            drawings.Line.Visible = false
-        end
-    end
-end
-
--- Fullbright System
-local function ToggleFullbright(value)
-    State.Fullbright = value
-    if value then
-        Lighting.Ambient = Color3.fromRGB(255, 255, 255)
-        Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
-        Lighting.Brightness = 2
-        Lighting.ClockTime = 14
-        Lighting.FogEnd = 100000
-    else
-        Lighting.Ambient = State.OriginalAmbient
-        Lighting.OutdoorAmbient = State.OriginalOutdoorAmbient
-        Lighting.Brightness = State.OriginalBrightness
-        Lighting.ClockTime = State.OriginalClockTime
-        Lighting.FogEnd = State.OriginalFogEnd
-    end
-end
-
--- Camera X-Ray System
-local function UpdateCameraSystem()
-    if State.CameraXRay then
-        LocalPlayer.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode.Invisicam
-        LocalPlayer.CameraMinZoomDistance = 0.5
-        LocalPlayer.CameraMaxZoomDistance = 400
-    else
-        LocalPlayer.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode.Zoom
-    end
-end
-
--- Air Walk + Noclip Platform
-local AirWalkPlatform = Instance.new("Part")
-AirWalkPlatform.Size = Vector3.new(8, 0.4, 8)
-AirWalkPlatform.Anchored = true
-AirWalkPlatform.Transparency = 1
-AirWalkPlatform.Color = Color3.fromRGB(150, 80, 255)
-AirWalkPlatform.Material = Enum.Material.SmoothPlastic
-AirWalkPlatform.CanCollide = false
-AirWalkPlatform.Name = "ZenAirWalkPlatform"
-AirWalkPlatform.Parent = workspace
-
-local lockedY = nil
-
-local function UpdateAirWalkNoclip()
-    local char = GetCharacter(LocalPlayer)
-    local root = GetRoot(LocalPlayer)
-    
-    if State.AirWalkNoclip and char and root then
-        if not lockedY then
-            lockedY = root.Position.Y - 3.15
-        end
-
-        AirWalkPlatform.CFrame = CFrame.new(root.Position.X, lockedY, root.Position.Z)
-        AirWalkPlatform.CanCollide = true
-        AirWalkPlatform.Transparency = 0.5
-
-        for _, part in pairs(char:GetDescendants()) do
-            if part:IsA("BasePart") and part ~= AirWalkPlatform and part.CanCollide then
-                part.CanCollide = false
-            end
-        end
-    else
-        lockedY = nil
-        AirWalkPlatform.CanCollide = false
-        AirWalkPlatform.Transparency = 1
-    end
-end
-
--- Teleport Farthest Player
-local function TeleportFarthestPlayer()
-    local myRoot = GetRoot(LocalPlayer)
-    if not myRoot then return end
-
-    local farthestPlayer = nil
-    local maxDistance = 0
-
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then
-            local targetRoot = GetRoot(player)
-            if targetRoot then
-                local dist = (targetRoot.Position - myRoot.Position).Magnitude
-                if dist > maxDistance then
-                    maxDistance = dist
-                    farthestPlayer = player
-                end
-            end
-        end
-    end
-
-    if farthestPlayer and GetRoot(farthestPlayer) then
-        myRoot.CFrame = GetRoot(farthestPlayer).CFrame * CFrame.new(0, 2, 0)
-    end
-end
-
--- Main RenderLoop Connection
-RunService.RenderStepped:Connect(function()
-    UpdateESP()
-    UpdateAirWalkNoclip()
-    UpdateCameraSystem()
-    
-    local hum = GetHumanoid(LocalPlayer)
-    if hum and State.WalkspeedToggle then
-        hum.WalkSpeed = State.WalkspeedValue
-    end
-end)
-
-for _, p in pairs(Players:GetPlayers()) do CreateESP(p) end
-Players.PlayerAdded:Connect(function(p) CreateESP(p) end)
-Players.PlayerRemoving:Connect(function(p) ClearESP(p) end)
-
--- -------------------------------------------------------------------
--- 4. USER INTERFACE (CLEAN 1:1 MINI UI)
--- -------------------------------------------------------------------
+-- ==========================================
+-- 2. GUI CREATION (CLEAN MINI UI & FLOATING BUTTON)
+-- ==========================================
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ZenithCleanMiniUI"
-ScreenGui.ResetOnSpawn = false
+ScreenGui.Name = "ZenMegaScriptUI"
+ScreenGui.Parent = CoreGui
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-if gethui then
-    ScreenGui.Parent = gethui()
-elseif syn and syn.protect_gui then
-    syn.protect_gui(ScreenGui)
-    ScreenGui.Parent = CoreGui
-else
-    ScreenGui.Parent = CoreGui
-end
+-- Floating Button ("Z")
+local FloatingBtn = Instance.new("TextButton")
+FloatingBtn.Name = "FloatingButtonZ"
+FloatingBtn.Parent = ScreenGui
+FloatingBtn.BackgroundColor3 = Color3.fromRGB(15, 23, 42)
+FloatingBtn.Position = UDim2.new(0, 30, 0.5, -30)
+FloatingBtn.Size = UDim2.new(0, 50, 0, 50)
+FloatingBtn.Font = Enum.Font.GothamBold
+FloatingBtn.Text = "Z"
+FloatingBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+FloatingBtn.TextSize = 22
 
--- Main Frame (260x260 px)
+local BtnCorner = Instance.new("UICorner")
+BtnCorner.CornerRadius = UDim.new(1, 0)
+BtnCorner.Parent = FloatingBtn
+
+local BtnStroke = Instance.new("UIStroke")
+BtnStroke.Color = Color3.fromRGB(56, 189, 248) -- Bright blue border
+BtnStroke.Thickness = 2
+BtnStroke.Parent = FloatingBtn
+
+local BtnGradient = Instance.new("UIGradient")
+BtnGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 41, 59)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(15, 23, 42))
+})
+BtnGradient.Rotation = 45
+BtnGradient.Parent = FloatingBtn
+
+-- Red dot accent on Floating Button
+local RedDot = Instance.new("Frame")
+RedDot.Name = "RedDotAccent"
+RedDot.Parent = FloatingBtn
+RedDot.BackgroundColor3 = Color3.fromRGB(239, 68, 68)
+RedDot.Position = UDim2.new(0.7, 0, 0.1, 0)
+RedDot.Size = UDim2.new(0, 10, 0, 10)
+local DotCorner = Instance.new("UICorner")
+DotCorner.CornerRadius = UDim.new(1, 0)
+DotCorner.Parent = RedDot
+
+-- Main Menu Frame (Clean Mini UI - 260x260)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 260, 0, 260)
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 23, 42)
 MainFrame.Position = UDim2.new(0.5, -130, 0.5, -130)
-MainFrame.BackgroundColor3 = Color3.fromRGB(22, 26, 38)
-MainFrame.BorderSizePixel = 0
+MainFrame.Size = UDim2.new(0, 260, 0, 260)
+MainFrame.Visible = false
 MainFrame.Active = true
 MainFrame.Draggable = true
-MainFrame.ClipsDescendants = true
-MainFrame.Parent = ScreenGui
 
 local MainCorner = Instance.new("UICorner")
 MainCorner.CornerRadius = UDim.new(0, 12)
 MainCorner.Parent = MainFrame
 
 local MainStroke = Instance.new("UIStroke")
-MainStroke.Color = Color3.fromRGB(60, 75, 110)
+MainStroke.Color = Color3.fromRGB(51, 65, 85)
 MainStroke.Thickness = 1.5
 MainStroke.Parent = MainFrame
 
-local MainGrad = Instance.new("UIGradient")
-MainGrad.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(28, 34, 50)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(16, 20, 28))
+local MainGradient = Instance.new("UIGradient")
+MainGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 41, 59)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(15, 23, 42))
 })
-MainGrad.Rotation = 45
-MainGrad.Parent = MainFrame
+MainGradient.Rotation = 90
+MainGradient.Parent = MainFrame
 
--- Floating Toggle Button (Z Button)
-local FloatBtn = Instance.new("TextButton")
-FloatBtn.Name = "FloatButton"
-FloatBtn.Size = UDim2.new(0, 54, 0, 54)
-FloatBtn.Position = UDim2.new(0, 15, 0.4, 0)
-FloatBtn.BackgroundColor3 = Color3.fromRGB(20, 25, 38)
-FloatBtn.Text = "Z"
-FloatBtn.TextColor3 = Color3.fromRGB(90, 210, 255)
-FloatBtn.Font = Enum.Font.GothamBold
-FloatBtn.TextSize = 22
-FloatBtn.Visible = false
-FloatBtn.Active = true
-FloatBtn.Parent = ScreenGui
+-- Top Bar / Header
+local Header = Instance.new("Frame")
+Header.Name = "Header"
+Header.Parent = MainFrame
+Header.BackgroundTransparency = 1
+Header.Size = UDim2.new(1, 0, 0, 35)
 
-local FloatCorner = Instance.new("UICorner")
-FloatCorner.CornerRadius = UDim.new(1, 0)
-FloatCorner.Parent = FloatBtn
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Parent = Header
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Position = UDim2.new(0, 12, 0, 0)
+TitleLabel.Size = UDim2.new(0, 180, 1, 0)
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.Text = "ZenMegaScript UI"
+TitleLabel.TextColor3 = Color3.fromRGB(248, 250, 252)
+TitleLabel.TextSize = 14
+TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 
-local FloatStroke = Instance.new("UIStroke")
-FloatStroke.Color = Color3.fromRGB(40, 160, 255)
-FloatStroke.Thickness = 2.5
-FloatStroke.Parent = FloatBtn
+-- Minimize / Close Button (-)
+local MinimizeBtn = Instance.new("TextButton")
+MinimizeBtn.Name = "MinimizeButton"
+MinimizeBtn.Parent = Header
+MinimizeBtn.BackgroundColor3 = Color3.fromRGB(239, 68, 68)
+MinimizeBtn.Position = UDim2.new(1, -30, 0.5, -10)
+MinimizeBtn.Size = UDim2.new(0, 20, 0, 20)
+MinimizeBtn.Font = Enum.Font.GothamBold
+MinimizeBtn.Text = "-"
+MinimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizeBtn.TextSize = 14
 
-local FloatGrad = Instance.new("UIGradient")
-FloatGrad.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(32, 45, 75)),
-    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(18, 24, 38)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 14, 22))
-})
-FloatGrad.Rotation = 135
-FloatGrad.Parent = FloatBtn
+local MinCorner = Instance.new("UICorner")
+MinCorner.CornerRadius = UDim.new(1, 0)
+MinCorner.Parent = MinimizeBtn
 
--- Red Accent Badge on Floating Button
-local RedDot = Instance.new("Frame")
-RedDot.Name = "RedDotAccent"
-RedDot.Size = UDim2.new(0, 15, 0, 15)
-RedDot.Position = UDim2.new(1, -16, 0, 3)
-RedDot.BackgroundColor3 = Color3.fromRGB(255, 35, 50)
-RedDot.BorderSizePixel = 0
-RedDot.Parent = FloatBtn
+-- Content Scroll Area inside 260x260 UI
+local ScrollContainer = Instance.new("ScrollingFrame")
+ScrollContainer.Parent = MainFrame
+ScrollContainer.BackgroundTransparency = 1
+ScrollContainer.Position = UDim2.new(0, 10, 0, 40)
+ScrollContainer.Size = UDim2.new(1, -20, 1, -50)
+ScrollContainer.CanvasSize = UDim2.new(0, 0, 0, 450)
+ScrollContainer.ScrollBarThickness = 4
 
-local RedDotCorner = Instance.new("UICorner")
-RedDotCorner.CornerRadius = UDim.new(1, 0)
-RedDotCorner.Parent = RedDot
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Parent = ScrollContainer
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0, 8)
 
-local RedDotStroke = Instance.new("UIStroke")
-RedDotStroke.Color = Color3.fromRGB(255, 130, 140)
-RedDotStroke.Thickness = 1.5
-RedDotStroke.Parent = RedDot
+-- ==========================================
+-- 3. UI BUILDER HELPER FUNCTIONS
+-- ==========================================
+local function createButton(name, text, callback)
+    local btn = Instance.new("TextButton")
+    btn.Name = name
+    btn.Parent = ScrollContainer
+    btn.BackgroundColor3 = Color3.fromRGB(30, 41, 59)
+    btn.Size = UDim2.new(1, 0, 0, 32)
+    btn.Font = Enum.Font.GothamSemibold
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(226, 232, 240)
+    btn.TextSize = 12
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+    
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(71, 85, 105)
+    stroke.Thickness = 1
+    stroke.Parent = btn
+    
+    btn.MouseButton1Click:Connect(callback)
+    return btn
+end
 
--- Smooth Dragging Logic
-local dragging, dragStart, startPos
-FloatBtn.InputBegan:Connect(function(input)
+local function createToggle(name, text, initialState, callback)
+    local frame = Instance.new("Frame")
+    frame.Name = name
+    frame.Parent = ScrollContainer
+    frame.BackgroundColor3 = Color3.fromRGB(30, 41, 59)
+    frame.Size = UDim2.new(1, 0, 0, 32)
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = frame
+    
+    local label = Instance.new("TextLabel")
+    label.Parent = frame
+    label.BackgroundTransparency = 1
+    label.Position = UDim2.new(0, 10, 0, 0)
+    label.Size = UDim2.new(0, 160, 1, 0)
+    label.Font = Enum.Font.GothamMedium
+    label.Text = text
+    label.TextColor3 = Color3.fromRGB(226, 232, 240)
+    label.TextSize = 11
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local tglBtn = Instance.new("TextButton")
+    tglBtn.Parent = frame
+    tglBtn.BackgroundColor3 = initialState and Color3.fromRGB(34, 197, 94) or Color3.fromRGB(100, 116, 139)
+    tglBtn.Position = UDim2.new(1, -45, 0.5, -10)
+    tglBtn.Size = UDim2.new(0, 36, 0, 20)
+    tglBtn.Text = initialState and "ON" or "OFF"
+    tglBtn.Font = Enum.Font.GothamBold
+    tglBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    tglBtn.TextSize = 9
+    
+    local tglCorner = Instance.new("UICorner")
+    tglCorner.CornerRadius = UDim.new(1, 0)
+    tglCorner.Parent = tglBtn
+    
+    local state = initialState
+    tglBtn.MouseButton1Click:Connect(function()
+        state = not state
+        tglBtn.BackgroundColor3 = state and Color3.fromRGB(34, 197, 94) or Color3.fromRGB(100, 116, 139)
+        tglBtn.Text = state and "ON" or "OFF"
+        callback(state)
+    end)
+    return frame
+end
+
+-- Section headers
+local function createSectionLabel(text)
+    local lbl = Instance.new("TextLabel")
+    lbl.Parent = ScrollContainer
+    lbl.BackgroundTransparency = 1
+    lbl.Size = UDim2.new(1, 0, 0, 20)
+    lbl.Font = Enum.Font.GothamBold
+    lbl.Text = text
+    lbl.TextColor3 = Color3.fromRGB(56, 189, 248)
+    lbl.TextSize = 11
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+end
+
+-- ==========================================
+-- 4. IMPLEMENTING FEATURES & CONTROLS
+-- ==========================================
+
+createSectionLabel("--- VISUALS ---")
+createToggle("ToggleChams", "ESP Chams Ringan", false, function(state)
+    Config.Chams_Enabled = state
+end)
+createToggle("ToggleDistance", "ESP Jarak (Meter)", false, function(state)
+    Config.Distance_Enabled = state
+end)
+createToggle("ToggleCameraXRay", "Camera X-Ray (No Occlusion)", false, function(state)
+    Config.CameraXRay_Enabled = state
+    if state then
+        LocalPlayer.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode.Invisicam
+    else
+        LocalPlayer.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode.Zoom
+    end
+end)
+
+createSectionLabel("--- ACTIONS & MOVEMENT ---")
+createToggle("ToggleAirWalkNoclip", "Air Walk + Noclip", false, function(state)
+    Config.AirWalk_Enabled = state
+    Config.Noclip_Enabled = state
+    if not state and airWalkPlatform then
+        airWalkPlatform:Destroy()
+        airWalkPlatform = nil
+    end
+end)
+
+-- Speed Controller with [+] and [-] buttons up to 250
+local speedFrame = Instance.new("Frame")
+speedFrame.Parent = ScrollContainer
+speedFrame.BackgroundColor3 = Color3.fromRGB(30, 41, 59)
+speedFrame.Size = UDim2.new(1, 0, 0, 32)
+local speedCorner = Instance.new("UICorner")
+speedCorner.CornerRadius = UDim.new(0, 6)
+speedCorner.Parent = speedFrame
+
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Parent = speedFrame
+speedLabel.BackgroundTransparency = 1
+speedLabel.Position = UDim2.new(0, 10, 0, 0)
+speedLabel.Size = UDim2.new(0, 130, 1, 0)
+speedLabel.Font = Enum.Font.GothamMedium
+speedLabel.Text = "Speed: 16"
+speedLabel.TextColor3 = Color3.fromRGB(226, 232, 240)
+speedLabel.TextSize = 11
+speedLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local minusBtn = Instance.new("TextButton")
+minusBtn.Parent = speedFrame
+minusBtn.BackgroundColor3 = Color3.fromRGB(71, 85, 105)
+minusBtn.Position = UDim2.new(1, -65, 0.5, -10)
+minusBtn.Size = UDim2.new(0, 26, 0, 20)
+minusBtn.Text = "-"
+minusBtn.Font = Enum.Font.GothamBold
+minusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+minusBtn.TextSize = 12
+Instance.new("UICorner", minusBtn).CornerRadius = UDim.new(0, 4)
+
+local plusBtn = Instance.new("TextButton")
+plusBtn.Parent = speedFrame
+plusBtn.BackgroundColor3 = Color3.fromRGB(71, 85, 105)
+plusBtn.Position = UDim2.new(1, -35, 0.5, -10)
+plusBtn.Size = UDim2.new(0, 26, 0, 20)
+plusBtn.Text = "+"
+plusBtn.Font = Enum.Font.GothamBold
+plusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+plusBtn.TextSize = 12
+Instance.new("UICorner", plusBtn).CornerRadius = UDim.new(0, 4)
+
+minusBtn.MouseButton1Click:Connect(function()
+    Config.WalkSpeed = math.clamp(Config.WalkSpeed - 5, 16, 250)
+    speedLabel.Text = "Speed: " .. Config.WalkSpeed
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        LocalPlayer.Character.Humanoid.WalkSpeed = Config.WalkSpeed
+    end
+end)
+
+plusBtn.MouseButton1Click:Connect(function()
+    Config.WalkSpeed = math.clamp(Config.WalkSpeed + 5, 16, 250)
+    speedLabel.Text = "Speed: " .. Config.WalkSpeed
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        LocalPlayer.Character.Humanoid.WalkSpeed = Config.WalkSpeed
+    end
+end)
+
+createButton("TPFarthest", "TP Player Terjauh", function()
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    local myPos = char.HumanoidRootPart.Position
+    local farthestPlayer = nil
+    local maxDist = 0
+    
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+            local dist = (myPos - plr.Character.HumanoidRootPart.Position).Magnitude
+            if dist > maxDist then
+                maxDist = dist
+                farthestPlayer = plr
+            end
+        end
+    end
+    
+    if farthestPlayer and farthestPlayer.Character and farthestPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        char.HumanoidRootPart.CFrame = farthestPlayer.Character.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
+    end
+end)
+
+-- TP Manual Name (TextBox + Button)
+local tpManualFrame = Instance.new("Frame")
+tpManualFrame.Parent = ScrollContainer
+tpManualFrame.BackgroundColor3 = Color3.fromRGB(30, 41, 59)
+tpManualFrame.Size = UDim2.new(1, 0, 0, 32)
+Instance.new("UICorner", tpManualFrame).CornerRadius = UDim.new(0, 6)
+
+local tpTextBox = Instance.new("TextBox")
+tpTextBox.Parent = tpManualFrame
+tpTextBox.BackgroundTransparency = 1
+tpTextBox.Position = UDim2.new(0, 8, 0, 0)
+tpTextBox.Size = UDim2.new(0, 160, 1, 0)
+tpTextBox.Font = Enum.Font.GothamMedium
+tpTextBox.PlaceholderText = "Ketik Nama Player..."
+tpTextBox.Text = ""
+tpTextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+tpTextBox.TextSize = 11
+tpTextBox.TextXAlignment = Enum.TextXAlignment.Left
+
+local tpGoBtn = Instance.new("TextButton")
+tpGoBtn.Parent = tpManualFrame
+tpGoBtn.BackgroundColor3 = Color3.fromRGB(56, 189, 248)
+tpGoBtn.Position = UDim2.new(1, -65, 0.5, -11)
+tpGoBtn.Size = UDim2.new(0, 58, 0, 22)
+tpGoBtn.Font = Enum.Font.GothamBold
+tpGoBtn.Text = "TP"
+tpGoBtn.TextColor3 = Color3.fromRGB(15, 23, 42)
+tpGoBtn.TextSize = 11
+Instance.new("UICorner", tpGoBtn).CornerRadius = UDim.new(0, 4)
+
+tpGoBtn.MouseButton1Click:Connect(function()
+    local query = string.lower(tpTextBox.Text)
+    if query == "" then return end
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if string.sub(string.lower(plr.Name), 1, #query) == query or string.sub(string.lower(plr.DisplayName), 1, #query) == query then
+            if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                LocalPlayer.Character.HumanoidRootPart.CFrame = plr.Character.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
+                break
+            end
+        end
+    end
+end)
+
+createButton("HopServer", "Hop Full Server", function()
+    local servers = {}
+    local success, err = pcall(function()
+        servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100")).data
+    end)
+    if success and servers then
+        for _, srv in ipairs(servers) do
+            if srv.playing < srv.maxPlayers and srv.id ~= game.JobId then
+                TeleportService:TeleportToPlaceInstance(game.PlaceId, srv.id, LocalPlayer)
+                break
+            end
+        end
+    end
+end)
+
+-- ==========================================
+-- 5. RUNTIME LOOPS (ESP, Noclip, AirWalk)
+-- ==========================================
+RunService.RenderStepped:Connect(function()
+    -- Noclip logic
+    if Config.Noclip_Enabled and LocalPlayer.Character then
+        for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end
+    
+    -- AirWalk logic
+    if Config.AirWalk_Enabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local hrp = LocalPlayer.Character.HumanoidRootPart
+        if not airWalkPlatform then
+            airWalkPlatform = Instance.new("Part")
+            airWalkPlatform.Name = "AirWalkPlatform"
+            airWalkPlatform.Size = Vector3.new(3, 0.2, 3)
+            airWalkPlatform.Transparency = 0.5
+            airWalkPlatform.Anchored = true
+            airWalkPlatform.CanCollide = true
+            airWalkPlatform.Parent = workspace
+        end
+        airWalkPlatform.CFrame = hrp.CFrame - Vector3.new(0, 3.5, 0)
+    elseif airWalkPlatform then
+        airWalkPlatform:Destroy()
+        airWalkPlatform = nil
+    end
+    
+    -- Chams & Distance ESP logic
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character then
+            local char = plr.Character
+            -- Chams
+            if Config.Chams_Enabled then
+                if not activeHighlights[plr] then
+                    local hl = Instance.new("Highlight")
+                    hl.Name = "ZenChams"
+                    hl.Adornee = char
+                    hl.FillColor = Color3.fromRGB(239, 68, 68)
+                    hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                    hl.Parent = char
+                    activeHighlights[plr] = hl
+                end
+            else
+                if activeHighlights[plr] then
+                    activeHighlights[plr]:Destroy()
+                    activeHighlights[plr] = nil
+                end
+            end
+        end
+    end
+end)
+
+-- ==========================================
+-- 6. ANIMASI & TRANSISI ELASTIC/BACK
+-- ==========================================
+local isOpen = false
+
+local function toggleUI()
+    isOpen = not isOpen
+    if isOpen then
+        MainFrame.Visible = true
+        MainFrame.Size = UDim2.new(0, 0, 0, 0)
+        MainFrame.Position = FloatingBtn.Position
+        
+        local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+        local tween = TweenService:Create(MainFrame, tweenInfo, {
+            Size = UDim2.new(0, 260, 0, 260),
+            Position = UDim2.new(0.5, -130, 0.5, -130)
+        })
+        tween:Play()
+    else
+        local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+        local tween = TweenService:Create(MainFrame, tweenInfo, {
+            Size = UDim2.new(0, 0, 0, 0),
+            Position = FloatingBtn.Position
+        })
+        tween:Play()
+        tween.Completed:Connect(function()
+            if not isOpen then
+                MainFrame.Visible = false
+            end
+        end)
+    end
+end
+
+FloatingBtn.MouseButton1Click:Connect(toggleUI)
+MinimizeBtn.MouseButton1Click:Connect(toggleUI)
+
+-- Smooth Draggable Floating Button ("Z") logic for mobile/PC
+local dragging, dragInput, dragStart, startPos
+FloatingBtn.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         dragging = true
         dragStart = input.Position
-        startPos = FloatBtn.Position
+        startPos = FloatingBtn.Position
         input.Changed:Connect(function()
             if input.UserInputState == Enum.UserInputState.End then
                 dragging = false
@@ -352,234 +527,9 @@ end)
 UserInputService.InputChanged:Connect(function(input)
     if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
         local delta = input.Position - dragStart
-        local targetPos = UDim2.new(
-            startPos.X.Scale,
-            startPos.X.Offset + delta.X,
-            startPos.Y.Scale,
-            startPos.Y.Offset + delta.Y
-        )
-        TweenService:Create(FloatBtn, TweenInfo.new(0.08, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {Position = targetPos}):Play()
+        FloatingBtn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
 end)
 
--- Header Bar
-local Header = Instance.new("Frame")
-Header.Size = UDim2.new(1, 0, 0, 36)
-Header.BackgroundTransparency = 1
-Header.Parent = MainFrame
+print("ZenMegaScript successfully loaded!")
 
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -40, 1, 0)
-Title.Position = UDim2.new(0, 12, 0, 0)
-Title.Text = "ZENITH • MINI"
-Title.TextColor3 = Color3.fromRGB(230, 235, 250)
-Title.TextSize = 13
-Title.Font = Enum.Font.GothamBold
-Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.BackgroundTransparency = 1
-Title.Parent = Header
-
-local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(0, 24, 0, 24)
-CloseBtn.Position = UDim2.new(1, -30, 0, 6)
-CloseBtn.Text = "-"
-CloseBtn.TextColor3 = Color3.fromRGB(200, 205, 220)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(32, 38, 52)
-CloseBtn.Font = Enum.Font.GothamBold
-CloseBtn.TextSize = 14
-CloseBtn.Parent = Header
-
-local CloseCorner = Instance.new("UICorner")
-CloseCorner.CornerRadius = UDim.new(0, 6)
-CloseCorner.Parent = CloseBtn
-
--- Smooth Minimize / Maximize Animations
-CloseBtn.MouseButton1Click:Connect(function()
-    local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In)
-    TweenService:Create(MainFrame, tweenInfo, {Size = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 1}):Play()
-    task.delay(0.2, function()
-        MainFrame.Visible = false
-        MainFrame.Size = UDim2.new(0, 260, 0, 260)
-        MainFrame.BackgroundTransparency = 0
-        
-        FloatBtn.Size = UDim2.new(0, 0, 0, 0)
-        FloatBtn.Visible = true
-        TweenService:Create(FloatBtn, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 54, 0, 54)}):Play()
-    end)
-end)
-
-FloatBtn.MouseButton1Click:Connect(function()
-    local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In)
-    TweenService:Create(FloatBtn, tweenInfo, {Size = UDim2.new(0, 0, 0, 0)}):Play()
-    task.delay(0.2, function()
-        FloatBtn.Visible = false
-        FloatBtn.Size = UDim2.new(0, 54, 0, 54)
-        
-        MainFrame.Size = UDim2.new(0, 0, 0, 0)
-        MainFrame.BackgroundTransparency = 1
-        MainFrame.Visible = true
-        TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 260, 0, 260), BackgroundTransparency = 0}):Play()
-    end)
-end)
-
--- Scrolling Container
-local Scroll = Instance.new("ScrollingFrame")
-Scroll.Size = UDim2.new(1, -16, 1, -42)
-Scroll.Position = UDim2.new(0, 8, 0, 38)
-Scroll.BackgroundTransparency = 1
-Scroll.ScrollBarThickness = 2
-Scroll.ScrollBarImageColor3 = Color3.fromRGB(80, 100, 140)
-Scroll.Parent = MainFrame
-
-local Layout = Instance.new("UIListLayout")
-Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-Layout.SortOrder = Enum.SortOrder.LayoutOrder
-Layout.Padding = UDim.new(0, 5)
-Layout.Parent = Scroll
-
-Layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    Scroll.CanvasSize = UDim2.new(0, 0, 0, Layout.AbsoluteContentSize.Y + 10)
-end)
-
--- -------------------------------------------------------------------
--- 5. UI COMPONENT BUILDERS (CLEAN & MODULAR)
--- -------------------------------------------------------------------
-local function AddCategory(name)
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -6, 0, 20)
-    label.Text = name
-    label.TextColor3 = Color3.fromRGB(120, 140, 180)
-    label.TextSize = 10
-    label.Font = Enum.Font.GothamBold
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.BackgroundTransparency = 1
-    label.Parent = Scroll
-end
-
-local function AddToggle(text, defaultState, callback)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -6, 0, 28)
-    btn.BackgroundColor3 = Color3.fromRGB(28, 34, 48)
-    btn.Font = Enum.Font.GothamMedium
-    btn.TextSize = 11
-    btn.Parent = Scroll
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 6)
-    corner.Parent = btn
-
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(48, 58, 82)
-    stroke.Thickness = 1
-    stroke.Parent = btn
-
-    local currentState = defaultState
-    local function Render()
-        btn.Text = text .. " -> " .. (currentState and "ON" or "OFF")
-        btn.TextColor3 = currentState and Color3.fromRGB(110, 240, 180) or Color3.fromRGB(180, 185, 200)
-    end
-    Render()
-
-    btn.MouseButton1Click:Connect(function()
-        currentState = not currentState
-        Render()
-        TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = currentState and Color3.fromRGB(36, 48, 72) or Color3.fromRGB(28, 34, 48)}):Play()
-        pcall(callback, currentState)
-    end)
-end
-
-local function AddButton(text, callback)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -6, 0, 28)
-    btn.BackgroundColor3 = Color3.fromRGB(32, 38, 55)
-    btn.Text = text
-    btn.TextColor3 = Color3.fromRGB(210, 215, 235)
-    btn.Font = Enum.Font.GothamMedium
-    btn.TextSize = 11
-    btn.Parent = Scroll
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 6)
-    corner.Parent = btn
-
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(55, 68, 98)
-    stroke.Thickness = 1
-    stroke.Parent = btn
-
-    btn.MouseButton1Click:Connect(function()
-        TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(48, 62, 92)}):Play()
-        task.delay(0.1, function()
-            TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(32, 38, 55)}):Play()
-        end)
-        pcall(callback)
-    end)
-end
-
-local function AddWalkspeedControl()
-    local container = Instance.new("Frame")
-    container.Size = UDim2.new(1, -6, 0, 32)
-    container.BackgroundColor3 = Color3.fromRGB(28, 34, 48)
-    container.Parent = Scroll
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 6)
-    corner.Parent = container
-
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(48, 58, 82)
-    stroke.Thickness = 1
-    stroke.Parent = container
-
-    local label = Instance.new("TextButton")
-    label.Size = UDim2.new(0.55, 0, 1, 0)
-    label.Position = UDim2.new(0, 8, 0, 0)
-    label.BackgroundTransparency = 1
-    label.Text = "Speed: 16"
-    label.TextColor3 = Color3.fromRGB(180, 185, 200)
-    label.TextSize = 11
-    label.Font = Enum.Font.GothamMedium
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = container
-
-    local minusBtn = Instance.new("TextButton")
-    minusBtn.Size = UDim2.new(0, 26, 0, 22)
-    minusBtn.Position = UDim2.new(0.58, 0, 0.15, 0)
-    minusBtn.BackgroundColor3 = Color3.fromRGB(36, 44, 64)
-    minusBtn.Text = "-"
-    minusBtn.TextColor3 = Color3.fromRGB(210, 215, 235)
-    minusBtn.Font = Enum.Font.GothamBold
-    minusBtn.TextSize = 12
-    minusBtn.Parent = container
-
-    local mCorner = Instance.new("UICorner")
-    mCorner.CornerRadius = UDim.new(0, 4)
-    mCorner.Parent = minusBtn
-
-    local plusBtn = Instance.new("TextButton")
-    plusBtn.Size = UDim2.new(0, 26, 0, 22)
-    plusBtn.Position = UDim2.new(0.78, 0, 0.15, 0)
-    plusBtn.BackgroundColor3 = Color3.fromRGB(36, 44, 64)
-    plusBtn.Text = "+"
-    plusBtn.TextColor3 = Color3.fromRGB(210, 215, 235)
-    plusBtn.Font = Enum.Font.GothamBold
-    plusBtn.TextSize = 12
-    plusBtn.Parent = container
-
-    local pCorner = Instance.new("UICorner")
-    pCorner.CornerRadius = UDim.new(0, 4)
-    pCorner.Parent = plusBtn
-
-    local function UpdateDisplay()
-        label.Text = "Speed: " .. State.WalkspeedValue .. " (" .. (State.WalkspeedToggle and "ON" or "OFF") .. ")"
-        label.TextColor3 = State.WalkspeedToggle and Color3.fromRGB(110, 240, 180) or Color3.fromRGB(180, 185, 200)
-    end
-
-    label.MouseButton1Click:Connect(function()
-        State.WalkspeedToggle = not State.WalkspeedToggle
-        UpdateDisplay()
-    end)
-
-    minusBtn.MouseButton1Click:Connect(function()
-        State.WalkspeedValue = math.max(16, State.WalkspeedValue - 8)
-        State.WalkspeedTog
