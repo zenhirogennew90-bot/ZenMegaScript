@@ -1,5 +1,5 @@
 -- ===================================================================
--- ZENITH ELEGANT 1:1 - MINI HYBRID SCRIPT (UPDATED ELEGAN FLOAT)
+-- ZENITH ELEGANT 1:1 - MINI HYBRID SCRIPT (BLACK THEME + RED/BLUE ACCENT)
 -- Features: Visual, Air Walk + Noclip Combo, Simple Speed Controller
 -- ===================================================================
 
@@ -280,7 +280,7 @@ local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 260, 0, 260)
 MainFrame.Position = UDim2.new(0.5, -130, 0.5, -130)
-MainFrame.BackgroundColor3 = Color3.fromRGB(15, 17, 22)
+MainFrame.BackgroundColor3 = Color3.fromRGB(10, 12, 16)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
@@ -292,20 +292,20 @@ MainCorner.CornerRadius = UDim.new(0, 12)
 MainCorner.Parent = MainFrame
 
 local MainStroke = Instance.new("UIStroke")
-MainStroke.Color = Color3.fromRGB(45, 52, 70)
+MainStroke.Color = Color3.fromRGB(35, 42, 60)
 MainStroke.Thickness = 1
 MainStroke.Parent = MainFrame
 
--- Floating Toggle Button (Elegan & Diperbesar ke 52x52)
+-- Floating Toggle Button (Tema Hitam, Border Biru Terang & Bulatan Merah Keren)
 local FloatBtn = Instance.new("TextButton")
 FloatBtn.Name = "FloatButton"
-FloatBtn.Size = UDim2.new(0, 52, 0, 52)
+FloatBtn.Size = UDim2.new(0, 54, 0, 54)
 FloatBtn.Position = UDim2.new(0, 15, 0.4, 0)
-FloatBtn.BackgroundColor3 = Color3.fromRGB(22, 25, 36)
+FloatBtn.BackgroundColor3 = Color3.fromRGB(8, 10, 14)
 FloatBtn.Text = "Z"
-FloatBtn.TextColor3 = Color3.fromRGB(140, 160, 255)
+FloatBtn.TextColor3 = Color3.fromRGB(60, 170, 255)
 FloatBtn.Font = Enum.Font.GothamBold
-FloatBtn.TextSize = 20
+FloatBtn.TextSize = 22
 FloatBtn.Visible = false
 FloatBtn.Active = true
 FloatBtn.Draggable = true
@@ -316,17 +316,35 @@ FloatCorner.CornerRadius = UDim.new(1, 0)
 FloatCorner.Parent = FloatBtn
 
 local FloatStroke = Instance.new("UIStroke")
-FloatStroke.Color = Color3.fromRGB(80, 95, 140)
+FloatStroke.Color = Color3.fromRGB(40, 140, 255)
 FloatStroke.Thickness = 2
 FloatStroke.Parent = FloatBtn
 
 local FloatGrad = Instance.new("UIGradient")
 FloatGrad.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(32, 38, 55)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(16, 19, 28))
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(18, 22, 32)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(6, 8, 12))
 })
 FloatGrad.Rotation = 45
 FloatGrad.Parent = FloatBtn
+
+-- Aksen Bulatan Merah Keren (Red Dot Badge)
+local RedDot = Instance.new("Frame")
+RedDot.Name = "RedDotAccent"
+RedDot.Size = UDim2.new(0, 15, 0, 15)
+RedDot.Position = UDim2.new(1, -16, 0, 3)
+RedDot.BackgroundColor3 = Color3.fromRGB(255, 35, 50)
+RedDot.BorderSizePixel = 0
+RedDot.Parent = FloatBtn
+
+local RedDotCorner = Instance.new("UICorner")
+RedDotCorner.CornerRadius = UDim.new(1, 0)
+RedDotCorner.Parent = RedDot
+
+local RedDotStroke = Instance.new("UIStroke")
+RedDotStroke.Color = Color3.fromRGB(255, 130, 140)
+RedDotStroke.Thickness = 1.5
+RedDotStroke.Parent = RedDot
 
 -- Header Bar
 local Header = Instance.new("Frame")
@@ -350,7 +368,7 @@ CloseBtn.Size = UDim2.new(0, 24, 0, 24)
 CloseBtn.Position = UDim2.new(1, -30, 0, 6)
 CloseBtn.Text = "-"
 CloseBtn.TextColor3 = Color3.fromRGB(160, 165, 180)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(25, 28, 38)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(20, 24, 33)
 CloseBtn.Font = Enum.Font.GothamBold
 CloseBtn.TextSize = 14
 CloseBtn.Parent = Header
@@ -406,7 +424,7 @@ end
 local function AddToggle(text, defaultState, callback)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -6, 0, 28)
-    btn.BackgroundColor3 = Color3.fromRGB(22, 25, 34)
+    btn.BackgroundColor3 = Color3.fromRGB(16, 19, 26)
     btn.Font = Enum.Font.GothamMedium
     btn.TextSize = 11
     btn.Parent = Scroll
@@ -418,7 +436,7 @@ local function AddToggle(text, defaultState, callback)
     local currentState = defaultState
     local function Render()
         btn.Text = text .. " -> " .. (currentState and "ON" or "OFF")
-        btn.TextColor3 = currentState and Color3.fromRGB(120, 220, 160) or Color3.fromRGB(160, 165, 180)
+        btn.TextColor3 = currentState and Color3.fromRGB(100, 230, 160) or Color3.fromRGB(160, 165, 180)
     end
     Render()
 
@@ -426,7 +444,7 @@ local function AddToggle(text, defaultState, callback)
         PlaySoftSound()
         currentState = not currentState
         Render()
-        TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = currentState and Color3.fromRGB(28, 35, 48) or Color3.fromRGB(22, 25, 34)}):Play()
+        TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = currentState and Color3.fromRGB(24, 32, 45) or Color3.fromRGB(16, 19, 26)}):Play()
         pcall(callback, currentState)
     end)
 end
@@ -434,7 +452,7 @@ end
 local function AddButton(text, callback)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -6, 0, 28)
-    btn.BackgroundColor3 = Color3.fromRGB(28, 32, 44)
+    btn.BackgroundColor3 = Color3.fromRGB(20, 24, 34)
     btn.Text = text
     btn.TextColor3 = Color3.fromRGB(200, 205, 220)
     btn.Font = Enum.Font.GothamMedium
@@ -447,9 +465,9 @@ local function AddButton(text, callback)
 
     btn.MouseButton1Click:Connect(function()
         PlaySoftSound()
-        TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(40, 48, 65)}):Play()
+        TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(35, 42, 60)}):Play()
         task.delay(0.1, function()
-            TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(28, 32, 44)}):Play()
+            TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(20, 24, 34)}):Play()
         end)
         pcall(callback)
     end)
@@ -459,7 +477,7 @@ end
 local function AddWalkspeedControl()
     local container = Instance.new("Frame")
     container.Size = UDim2.new(1, -6, 0, 32)
-    container.BackgroundColor3 = Color3.fromRGB(22, 25, 34)
+    container.BackgroundColor3 = Color3.fromRGB(16, 19, 26)
     container.Parent = Scroll
 
     local corner = Instance.new("UICorner")
@@ -480,7 +498,7 @@ local function AddWalkspeedControl()
     local minusBtn = Instance.new("TextButton")
     minusBtn.Size = UDim2.new(0, 26, 0, 22)
     minusBtn.Position = UDim2.new(0.58, 0, 0.15, 0)
-    minusBtn.BackgroundColor3 = Color3.fromRGB(28, 32, 44)
+    minusBtn.BackgroundColor3 = Color3.fromRGB(20, 24, 34)
     minusBtn.Text = "-"
     minusBtn.TextColor3 = Color3.fromRGB(200, 205, 220)
     minusBtn.Font = Enum.Font.GothamBold
@@ -494,7 +512,7 @@ local function AddWalkspeedControl()
     local plusBtn = Instance.new("TextButton")
     plusBtn.Size = UDim2.new(0, 26, 0, 22)
     plusBtn.Position = UDim2.new(0.78, 0, 0.15, 0)
-    plusBtn.BackgroundColor3 = Color3.fromRGB(28, 32, 44)
+    plusBtn.BackgroundColor3 = Color3.fromRGB(20, 24, 34)
     plusBtn.Text = "+"
     plusBtn.TextColor3 = Color3.fromRGB(200, 205, 220)
     plusBtn.Font = Enum.Font.GothamBold
@@ -507,7 +525,7 @@ local function AddWalkspeedControl()
 
     local function UpdateDisplay()
         label.Text = "Speed: " .. State.WalkspeedValue .. " (" .. (State.WalkspeedToggle and "ON" or "OFF") .. ")"
-        label.TextColor3 = State.WalkspeedToggle and Color3.fromRGB(120, 220, 160) or Color3.fromRGB(160, 165, 180)
+        label.TextColor3 = State.WalkspeedToggle and Color3.fromRGB(100, 230, 160) or Color3.fromRGB(160, 165, 180)
     end
 
     label.MouseButton1Click:Connect(function()
@@ -550,3 +568,4 @@ AddButton("TP Player Terjauh", function() TeleportFarthestPlayer() end)
 AddButton("Hop Full Server", function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end)
 
 print("Zenith Mini UI Loaded Successfully!")
+0
